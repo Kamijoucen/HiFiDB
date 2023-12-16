@@ -7,10 +7,23 @@ import (
 )
 
 func Test_io(t *testing.T) {
-	file, _ := os.Create("/home/kamijoucen/test.txt")
+
+	filename := "/home/kamijoucen/test.txt"
+
+	file, _ := os.Create(filename)
 	defer fclose(file)
 
 	_, _ = file.WriteString("lisicen io test")
+
+	file2, _ := os.Open(filename)
+
+	bytes := make([]byte, 1024)
+
+	n, _ := file2.Read(bytes)
+
+	fmt.Printf("%s", bytes[:n])
+
+	os.Remove(filename)
 }
 
 func Test_randomIO(t *testing.T) {

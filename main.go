@@ -1,9 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/kamijoucen/hifidb/kv"
+)
 
 func main() {
+	fmt.Println("hello " + "world")
 
-	fmt.Println("hello gotable!")
+	mt := kv.NewBstTable()
+
+	mt.Insert(kv.NewBstNode("hello"))
 
 }
