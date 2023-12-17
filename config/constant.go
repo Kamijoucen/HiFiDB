@@ -3,4 +3,6 @@ package config
 const (
 	DATA_BLOCK_ID_SIZE     = 128
 	DATA_BLOCK_LENGTH_SIZE = 8
+	SS_TABLE_META_SIZE     = 276
+	SS_NODE_META_SIZE      = 138
 )
