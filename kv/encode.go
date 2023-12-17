@@ -67,7 +67,7 @@ func EnCodeSSTableMeta(meta *SSTableMeta) []byte {
 // convert sstable index to bytes
 func EnCodeSSTableIndex(index *SSTableIndex) []byte {
 
-	bytes := make([]byte, 0, 8+len(index.Index)*136)
+	bytes := make([]byte, 0, 8+len(index.Index)*config.SS_TABLE_INDEX_PAIR)
 	bytes = append(bytes, Uint64ToBytes(index.Size)...)
 
 	for k, v := range index.Index {

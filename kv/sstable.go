@@ -1,14 +1,18 @@
 package kv
 
+// 压缩类型
 const (
-	// 压缩类型
+	// 不压缩
 	COMP_TYPE_NONE = uint8(iota)
+	// 压缩
 	COMP_TYPE_ZLIB
 )
 
+// 数据块类型
 const (
-	// 数据块类型
+	// 普通数据
 	DATA_BLOCK_TYPE_DATA = uint8(iota)
+	// 删除数据
 	DATA_BLOCK_TYPE_DELETE
 )
 
@@ -45,3 +49,5 @@ type SSNodeMeta struct {
 	CompType uint8  // 1 byte
 	Size     uint64 // 8 bytes all 138 bytes
 }
+
+// TODO 通过new新建table
