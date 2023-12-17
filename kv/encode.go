@@ -79,9 +79,9 @@ func EnCodeSSTableIndex(index *SSTableIndex) []byte {
 
 // convert SSTable node to bytes
 func EnCodeSSTableNode(node *SSTableNode) []byte {
-	allBytes := EnCodeSSTableNodeMeta(&node.MetaData)
-	allBytes = append(allBytes, StrToBytes(node.Value, len(node.Value))...)
-	return allBytes
+	bytes := EnCodeSSTableNodeMeta(&node.MetaData)
+	bytes = append(bytes, StrToBytes(node.Value, len(node.Value))...)
+	return bytes
 }
 
 // convert SSTable node meta info to bytes
