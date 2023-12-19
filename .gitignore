@@ -190,3 +190,7 @@ tags
 # Persistent undo
 [._]*.un~
 
+tempdb
+*.sst
+*.meta
+*.walog

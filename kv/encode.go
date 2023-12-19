@@ -23,6 +23,8 @@ func EnCodeSSTable(sst *SSTable) ([]byte, error) {
 
 	resultChan := make(chan result, len(sst.Nodes))
 	var wg sync.WaitGroup
+	wg.Add(len(sst.Nodes))
+
 	// close resultChan
 	go func() {
 		wg.Wait()
@@ -31,7 +33,6 @@ func EnCodeSSTable(sst *SSTable) ([]byte, error) {
 
 	// TODO 预分配node的空间
 	for i, node := range sst.Nodes {
-		wg.Add(1)
 		go func(i int, node *SSTableNode) {
 			defer wg.Done()
 			resultChan <- result{i, EnCodeSSTableNode(node)}

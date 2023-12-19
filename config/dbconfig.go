@@ -54,7 +54,7 @@ func WithSSTableSize(size uint64) DBConfigOption {
 
 func NewDBConfig(options ...DBConfigOption) *DBConfig {
 	config := &DBConfig{
-		DBPath:      "./",
+		DBPath:      "../tempdb",
 		SSTableSize: 1 * 1024 * 1024,  // 1MB
 		L0Size:      4 * 1024 * 1024,  // 4MB
 		L1Size:      10 * 1024 * 1024, // 10MB
