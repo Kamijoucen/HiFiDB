@@ -1,27 +1,29 @@
-package kv
+package codec
 
 import (
 	"testing"
+
+	"github.com/kamijoucen/hifidb/kv"
 )
 
 func TestEnCodeSSTable(t *testing.T) {
-	sst := SSTable{
-		MetaData: &SSTableMeta{
+	sst := kv.SSTable{
+		MetaData: &kv.SSTableMeta{
 			Size:      100,
 			BeginId:   "begin",
 			EndId:     "end",
 			BlockSize: 10,
 			Timestamp: 11111,
 		},
-		IndexData: &SSTableIndex{
+		IndexData: &kv.SSTableIndex{
 			Size: 1,
 			Index: map[string]uint64{
 				"index": 1,
 			},
 		},
-		Nodes: []*SSTableNode{
+		Nodes: []*kv.SSTableNode{
 			{
-				MetaData: SSNodeMeta{
+				MetaData: kv.SSNodeMeta{
 					Id:       "id",
 					DataType: 1,
 					CompType: 1,

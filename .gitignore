@@ -194,3 +194,4 @@ tempdb
 *.sst
 *.meta
 *.walog
+.VSCodeCounter

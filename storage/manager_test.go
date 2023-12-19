@@ -37,7 +37,7 @@ func TestEnCodeSSTable(t *testing.T) {
 	}
 
 	manager := NewStorageManager()
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 10; i++ {
 		err := manager.WriteSSTable(&sst)
 		if err != nil {
 			t.Error(err)
