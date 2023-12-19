@@ -8,10 +8,11 @@ func loadConfigFile() *DBConfig {
 }
 
 type DBConfig struct {
-	DBPath     string
-	L0Size     uint64
-	L1Size     uint64
-	LevelRatio uint32
+	DBPath      string
+	SSTableSize uint64
+	L0Size      uint64
+	L1Size      uint64
+	LevelRatio  uint32
 }
 
 type DBConfigOption func(*DBConfig)
@@ -44,12 +45,20 @@ func WithLevelRatio(ratio uint32) DBConfigOption {
 	}
 }
 
+// sstable size
+func WithSSTableSize(size uint64) DBConfigOption {
+	return func(config *DBConfig) {
+		config.SSTableSize = size
+	}
+}
+
 func NewDBConfig(options ...DBConfigOption) *DBConfig {
 	config := &DBConfig{
-		DBPath:     "./db",
-		L0Size:     4 * 1024 * 1024,  // 4MB
-		L1Size:     64 * 1024 * 1024, // 64MB
-		LevelRatio: 10,               // 10:1
+		DBPath:      "./",
+		SSTableSize: 1 * 1024 * 1024,  // 1MB
+		L0Size:      4 * 1024 * 1024,  // 4MB
+		L1Size:      10 * 1024 * 1024, // 10MB
+		LevelRatio:  10,               // 10:1
 	}
 	for _, option := range options {
 		option(config)

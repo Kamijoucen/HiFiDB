@@ -26,8 +26,8 @@ const (
 
 // sstable
 type SSTable struct {
-	MetaData  SSTableMeta
-	IndexData SSTableIndex
+	MetaData  *SSTableMeta
+	IndexData *SSTableIndex
 	Nodes     []*SSTableNode
 }
 

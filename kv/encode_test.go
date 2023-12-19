@@ -6,14 +6,14 @@ import (
 
 func TestEnCodeSSTable(t *testing.T) {
 	sst := SSTable{
-		MetaData: SSTableMeta{
-			Size:      1,
+		MetaData: &SSTableMeta{
+			Size:      100,
 			BeginId:   "begin",
 			EndId:     "end",
-			BlockSize: 1,
-			Timestamp: 1,
+			BlockSize: 10,
+			Timestamp: 11111,
 		},
-		IndexData: SSTableIndex{
+		IndexData: &SSTableIndex{
 			Size: 1,
 			Index: map[string]uint64{
 				"index": 1,

@@ -17,9 +17,9 @@ func EnCodeSSTable(sst *SSTable) ([]byte, error) {
 		return nil, errors.New("SSTable.Nodes is empty")
 	}
 	// meta info
-	allBytes := EnCodeSSTableMeta(&sst.MetaData)
+	allBytes := EnCodeSSTableMeta(sst.MetaData)
 	// index info
-	allBytes = append(allBytes, EnCodeSSTableIndex(&sst.IndexData)...)
+	allBytes = append(allBytes, EnCodeSSTableIndex(sst.IndexData)...)
 
 	resultChan := make(chan result, len(sst.Nodes))
 	var wg sync.WaitGroup
