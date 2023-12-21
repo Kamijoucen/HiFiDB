@@ -68,7 +68,7 @@ func EnCodeSSTableMeta(meta *kv.SSTableMeta) []byte {
 // convert sstable index to bytes
 func EnCodeSSTableIndex(index *kv.SSTableIndex) []byte {
 
-	bytes := make([]byte, 0, 8+len(index.Index)*kv.SS_TABLE_INDEX_PAIR)
+	bytes := make([]byte, 0, 8+len(index.Index)*kv.SS_TABLE_INDEX_PAIR_SIZE)
 	bytes = append(bytes, Uint64ToBytes(index.Size)...)
 
 	for k, v := range index.Index {
@@ -118,6 +118,10 @@ func Uint64ToBytes(n uint64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, n)
 	return b
+}
+
+func BytesToUint64(b []byte) uint64 {
+	return binary.BigEndian.Uint64(b)
 }
 
 func StrToBytes(s string, len int) []byte {

@@ -47,6 +47,12 @@ func (sf *safeFile) ReadAt(b []byte, off int64) (n int, err error) {
 	return sf.f.ReadAt(b, off)
 }
 
+func (sf *safeFile) Read(b []byte) (n int, err error) {
+	sf.lock.RLock()
+	defer sf.lock.RUnlock()
+	return sf.f.Read(b)
+}
+
 func (sf *safeFile) WriteAt(b []byte, off int64) (n int, err error) {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
@@ -67,4 +73,13 @@ func (sf *safeFile) Close() error {
 	}
 	sf.state = CLOSE
 	return sf.f.Close()
+}
+
+func (sf *safeFile) IsExist() bool {
+	sf.lock.RLock()
+	defer sf.lock.RUnlock()
+	if _, err := os.Stat(sf.path); err == nil {
+		return true
+	}
+	return false
 }
