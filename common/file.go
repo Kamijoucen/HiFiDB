@@ -1,4 +1,4 @@
-package storage
+package common
 
 import (
 	"os"
@@ -12,21 +12,21 @@ const (
 	CLOSE
 )
 
-type safeFile struct {
+type SafeFile struct {
 	lock  sync.RWMutex
 	path  string
 	state uint8
 	f     *os.File
 }
 
-func NewSafeFile(path string) *safeFile {
-	return &safeFile{
+func NewSafeFile(path string) *SafeFile {
+	return &SafeFile{
 		path:  path,
 		state: NONE,
 	}
 }
 
-func (sf *safeFile) Open(flag int) error {
+func (sf *SafeFile) Open(flag int) error {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
 	if sf.state == OPEN || sf.state == CLOSE {
@@ -41,31 +41,31 @@ func (sf *safeFile) Open(flag int) error {
 	return nil
 }
 
-func (sf *safeFile) ReadAt(b []byte, off int64) (n int, err error) {
+func (sf *SafeFile) ReadAt(b []byte, off int64) (n int, err error) {
 	sf.lock.RLock()
 	defer sf.lock.RUnlock()
 	return sf.f.ReadAt(b, off)
 }
 
-func (sf *safeFile) Read(b []byte) (n int, err error) {
+func (sf *SafeFile) Read(b []byte) (n int, err error) {
 	sf.lock.RLock()
 	defer sf.lock.RUnlock()
 	return sf.f.Read(b)
 }
 
-func (sf *safeFile) WriteAt(b []byte, off int64) (n int, err error) {
+func (sf *SafeFile) WriteAt(b []byte, off int64) (n int, err error) {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
 	return sf.f.WriteAt(b, off)
 }
 
-func (sf *safeFile) Write(b []byte) (n int, err error) {
+func (sf *SafeFile) Write(b []byte) (n int, err error) {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
 	return sf.f.Write(b)
 }
 
-func (sf *safeFile) Close() error {
+func (sf *SafeFile) Close() error {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
 	if sf.state == CLOSE || sf.state == NONE {
@@ -75,7 +75,7 @@ func (sf *safeFile) Close() error {
 	return sf.f.Close()
 }
 
-func (sf *safeFile) IsExist() bool {
+func (sf *SafeFile) IsExist() bool {
 	sf.lock.RLock()
 	defer sf.lock.RUnlock()
 	if _, err := os.Stat(sf.path); err == nil {

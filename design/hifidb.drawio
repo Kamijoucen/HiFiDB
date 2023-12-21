@@ -10,11 +10,8 @@
                 <mxCell id="7" value="Server" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="200" y="280" width="370" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="9" value="SQL Parser" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="10" value="SQL Executor（Parser，Optimization）" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="200" y="320" width="370" height="30" as="geometry"/>
-                </mxCell>
-                <mxCell id="10" value="SQL Optimization" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="200" y="360" width="370" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="11" value="KV Api" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="200" y="400" width="170" height="30" as="geometry"/>
@@ -63,9 +60,12 @@
                 </mxCell>
                 <mxCell id="33" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;" parent="1" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="140" y="555" as="sourcePoint"/>
-                        <mxPoint x="850" y="555" as="targetPoint"/>
+                        <mxPoint x="160" y="555" as="sourcePoint"/>
+                        <mxPoint x="830" y="555" as="targetPoint"/>
                     </mxGeometry>
+                </mxCell>
+                <mxCell id="34" value="Graph Schema" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="360" width="370" height="30" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

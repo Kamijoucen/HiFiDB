@@ -1,4 +1,4 @@
-package storage
+package kv
 
 import (
 	"os"
@@ -6,20 +6,23 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/kamijoucen/hifidb/common"
 	"github.com/kamijoucen/hifidb/config"
-	"github.com/kamijoucen/hifidb/kv"
-	"github.com/kamijoucen/hifidb/kv/codec"
 )
 
 type metaManager struct {
 	lock        sync.RWMutex
-	pointFile   *safeFile
-	curMetaFile *safeFile
+	pointFile   *common.SafeFile
+	curMetaFile *common.SafeFile
 	curMetaId   uint64
 }
 
 func NewMetaManager() *metaManager {
-	return &metaManager{}
+	m := &metaManager{}
+	if err := m.Init(); err != nil {
+		panic(err)
+	}
+	return m
 }
 
 func (mm *metaManager) Init() error {
@@ -30,7 +33,7 @@ func (mm *metaManager) Init() error {
 	if err := mm.initCurrentPoint(); err != nil {
 		return err
 	}
-	mm.curMetaFile = NewSafeFile(filepath.Join(config.GlobalConfig.DBPath, strconv.FormatUint(mm.curMetaId, 10)))
+	mm.curMetaFile = common.NewSafeFile(filepath.Join(config.GlobalConfig.DBPath, strconv.FormatUint(mm.curMetaId, 10)))
 	if err := mm.curMetaFile.Open(os.O_RDWR | os.O_CREATE | os.O_APPEND); err != nil {
 		return err
 	}
@@ -38,7 +41,7 @@ func (mm *metaManager) Init() error {
 }
 
 func (mm *metaManager) initCurrentPoint() error {
-	current := NewSafeFile(filepath.Join(config.GlobalConfig.DBPath, "CURRENT"))
+	current := common.NewSafeFile(filepath.Join(config.GlobalConfig.DBPath, "CURRENT"))
 	if err := current.Open(os.O_RDWR | os.O_CREATE); err != nil {
 		return err
 	}
@@ -51,27 +54,18 @@ func (mm *metaManager) initCurrentPoint() error {
 	}
 	if n == 0 {
 		mm.curMetaId = 1
-		if _, err := current.Write(codec.Uint64ToBytes(mm.curMetaId)); err != nil {
+		if _, err := current.Write(Uint64ToBytes(mm.curMetaId)); err != nil {
 			return err
 		}
 	}
-	mm.curMetaId = codec.BytesToUint64(b)
+	mm.curMetaId = BytesToUint64(b)
 	return nil
 }
 
-func (mm *metaManager) WriteNextSstId(id uint64) error {
-	return nil
-}
-
-func (mm *metaManager) WriteNextMetaId(id uint64) error {
+func (mm *metaManager) ReadNextSstId(id uint64) error {
 	return nil
 }
 
 func (mm *metaManager) WriteDeleteSstId(id uint64) error {
-	return nil
-}
-
-// write sst meta info to current meta file
-func (mm *metaManager) WriteSSTableMeta(meta *kv.SSTableMeta) error {
 	return nil
 }

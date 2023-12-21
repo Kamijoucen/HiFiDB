@@ -17,3 +17,4 @@
 2. 索引（底层参考tidb的LSM-Tree方案）
 3. 分布式存储（参考tidb的raft方案）
 4. MVCC
+5. GIS
