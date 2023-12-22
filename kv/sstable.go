@@ -1,61 +1,32 @@
 package kv
 
-// 压缩类型
-const (
-	// 不压缩
-	COMP_TYPE_NONE = uint8(iota)
-	// 压缩
-	COMP_TYPE_ZLIB
-)
-
-// 数据块类型
-const (
-	// 普通数据
-	DATA_BLOCK_TYPE_DATA = uint8(iota)
-	// 删除数据
-	DATA_BLOCK_TYPE_DELETE
-)
+// |-------------------------------------|
+// | key size | key | value size | value |
+// |-------------------------------------|
 
 const (
-	DATA_BLOCK_ID_SIZE       = 128
-	DATA_BLOCK_LENGTH_SIZE   = 8
-	SS_TABLE_META_SIZE       = 276
-	SS_NODE_META_SIZE        = 138
-	SS_TABLE_INDEX_PAIR_SIZE = 136
+	MAGIC_NUMBER = 12138
 )
 
-// sstable
+type DataItem struct {
+	Key   []byte
+	Value []byte
+}
+
+type IndexItem struct {
+	Key    []byte // key
+	Offset uint64 // 数据块的偏移量
+	Length uint32 // 数据块的长度
+}
+
+type FooterItem struct {
+	IndexOffset uint64 // 索引块的偏移量
+	IndexLen    uint64 // 索引块的长度
+	Magic       uint32 // 魔数
+}
+
 type SSTable struct {
-	MetaData  *SSTableMeta
-	IndexData *SSTableIndex
-	Nodes     []*SSTableNode
+	DataBlocks  []*DataItem
+	IndexBlocks []*IndexItem
+	FooterItem  *FooterItem
 }
-
-type SSTableMeta struct {
-	Size      uint64 // 8 bytes
-	BeginId   string // 128 bytes
-	EndId     string // 128 bytes
-	BlockSize uint32 // 4 bytes sstable中数据块的数量
-	Timestamp int64  // 8 bytes all 276 bytes
-}
-
-// 有序的键值对
-type SSTableIndex struct {
-	Size  uint64            // 8 bytes
-	Index map[string]uint64 // key 128 bytes value 8 bytes, one index all 136 bytes
-}
-
-// data block
-type SSTableNode struct {
-	MetaData SSNodeMeta
-	Value    string
-}
-
-type SSNodeMeta struct {
-	Id       string // 128 bytes
-	DataType uint8  // 1 byte
-	CompType uint8  // 1 byte
-	Size     uint64 // 8 bytes all 138 bytes
-}
-
-// TODO 通过new新建table

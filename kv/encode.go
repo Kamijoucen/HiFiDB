@@ -2,98 +2,47 @@ package kv
 
 import (
 	"encoding/binary"
-	"errors"
-	"sync"
+
+	"github.com/kamijoucen/hifidb/config"
 )
 
-type result struct {
-	index int
-	bytes []byte
+type indexPart struct {
+	keyLen uint32
+	key    []byte
+	offset uint64
 }
 
+// TODO 考虑改为增量写入
 func EnCodeSSTable(sst *SSTable) ([]byte, error) {
 
-	if len(sst.Nodes) == 0 {
-		return nil, errors.New("SSTable.Nodes is empty")
-	}
-	// meta info
-	allBytes := EnCodeSSTableMeta(sst.MetaData)
-	// index info
-	allBytes = append(allBytes, EnCodeSSTableIndex(sst.IndexData)...)
+	allBytes := make([]byte, 0, config.GlobalConfig.SSTableSize)
 
-	resultChan := make(chan result, len(sst.Nodes))
-	var wg sync.WaitGroup
-	wg.Add(len(sst.Nodes))
+	indexSlice := make([]*indexPart, 0, len(sst.DataBlocks))
+	for _, block := range sst.DataBlocks {
+		keyLen := uint32(len(block.Key))
+		// index
+		indexSlice = append(indexSlice, &indexPart{keyLen, block.Key, uint64(len(allBytes))})
+		// data block
+		allBytes = append(allBytes, Uint32ToBytes(keyLen)...)
+		allBytes = append(allBytes, block.Key...)
+		allBytes = append(allBytes, Uint32ToBytes(uint32(len(block.Value)))...)
+		allBytes = append(allBytes, block.Value...)
+	}
 
-	// close resultChan
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	// TODO 预分配node的空间
-	for i, node := range sst.Nodes {
-		go func(i int, node *SSTableNode) {
-			defer wg.Done()
-			resultChan <- result{i, EnCodeSSTableNode(node)}
-		}(i, node)
+	indexOffset := uint64(len(allBytes))
+	// index block
+	for _, index := range indexSlice {
+		allBytes = append(allBytes, Uint32ToBytes(index.keyLen)...)
+		allBytes = append(allBytes, index.key...)
+		allBytes = append(allBytes, Uint64ToBytes(index.offset)...)
 	}
-	results := make([][]byte, len(sst.Nodes))
-	for range sst.Nodes {
-		r := <-resultChan
-		results[r.index] = r.bytes
-	}
-	for _, bytes := range results {
-		allBytes = append(allBytes, bytes...)
-	}
+	indexLen := uint64(len(allBytes)) - indexOffset
+	// footer
+	allBytes = append(allBytes, Uint64ToBytes(indexOffset)...)
+	allBytes = append(allBytes, Uint64ToBytes(indexLen)...)
+	allBytes = append(allBytes, Uint32ToBytes(MAGIC_NUMBER)...)
+	// footer allBytes: indexOffset + indexLen + magic: 8 + 8 + 4 = 20
 	return allBytes, nil
-}
-
-// convert SSTable meta info to bytes
-func EnCodeSSTableMeta(meta *SSTableMeta) []byte {
-
-	bytes := make([]byte, 0, SS_TABLE_META_SIZE)
-
-	bytes = append(bytes, Uint64ToBytes(meta.Size)...)
-	// block start and end id
-	bytes = append(bytes, StrToBytes(meta.BeginId, DATA_BLOCK_ID_SIZE)...)
-	bytes = append(bytes, StrToBytes(meta.EndId, DATA_BLOCK_ID_SIZE)...)
-	bytes = append(bytes, Uint32ToBytes(meta.BlockSize)...)
-	bytes = append(bytes, Uint64ToBytes(uint64(meta.Timestamp))...)
-	return bytes
-}
-
-// convert sstable index to bytes
-func EnCodeSSTableIndex(index *SSTableIndex) []byte {
-
-	bytes := make([]byte, 0, 8+len(index.Index)*SS_TABLE_INDEX_PAIR_SIZE)
-	bytes = append(bytes, Uint64ToBytes(index.Size)...)
-
-	for k, v := range index.Index {
-		bytes = append(bytes, StrToBytes(k, DATA_BLOCK_ID_SIZE)...)
-		bytes = append(bytes, Uint64ToBytes(v)...)
-	}
-	return bytes
-}
-
-// convert SSTable node to bytes
-func EnCodeSSTableNode(node *SSTableNode) []byte {
-	bytes := EnCodeSSTableNodeMeta(&node.MetaData)
-	bytes = append(bytes, StrToBytes(node.Value, len(node.Value))...)
-	return bytes
-}
-
-// convert SSTable node meta info to bytes
-func EnCodeSSTableNodeMeta(meta *SSNodeMeta) []byte {
-
-	bytes := make([]byte, 0, SS_NODE_META_SIZE)
-
-	bytes = append(bytes, StrToBytes(meta.Id, DATA_BLOCK_ID_SIZE)...)
-	bytes = append(bytes, Uint8ToBytes(meta.DataType)...)
-	bytes = append(bytes, Uint8ToBytes(meta.CompType)...)
-	bytes = append(bytes, Uint64ToBytes(meta.Size)...)
-
-	return bytes
 }
 
 func Uint8ToBytes(n uint8) []byte {
