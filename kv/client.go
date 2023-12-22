@@ -1,39 +1,39 @@
 package kv
 
-type kvClient struct {
+type KVClient struct {
 }
 
-func NewKV() *kvClient {
-	return &kvClient{}
+func NewKV() *KVClient {
+	return &KVClient{}
 }
 
-func (client *kvClient) Get(key []byte) ([]byte, error) {
+func (client *KVClient) Get(key []byte) ([]byte, error) {
 	panic("not implemented") // TODO: Implement
 }
 
-func (client *kvClient) Put(key []byte, value []byte) error {
+func (client *KVClient) Put(key []byte, value []byte) error {
 	panic("not implemented") // TODO: Implement
 }
 
-func (client *kvClient) Delete(key []byte) error {
+func (client *KVClient) Delete(key []byte) error {
 	panic("not implemented") // TODO: Implement
 }
 
-func (client *kvClient) BatchGet(keys [][]byte) ([][]byte, error) {
+func (client *KVClient) BatchGet(keys [][]byte) ([][]byte, error) {
 	panic("not implemented") // TODO: Implement
 }
 
-func (client *kvClient) BatchPut(keys [][]byte, values [][]byte) error {
+func (client *KVClient) BatchPut(keys [][]byte, values [][]byte) error {
 	panic("not implemented") // TODO: Implement
 }
 
-func (client *kvClient) BatchDelete(keys [][]byte) error {
+func (client *KVClient) BatchDelete(keys [][]byte) error {
 	panic("not implemented") // TODO: Implement
 }
 
 // Range(beginKey []byte, endKey []byte) (Iterator, error)
 // Prefix(prefix []byte) (Iterator, error)
 // BatchRange(beginKey []byte, endKey []byte) (Iterator, error)
-func (client *kvClient) Close() error {
+func (client *KVClient) Close() error {
 	panic("not implemented") // TODO: Implement
 }

@@ -11,5 +11,6 @@ type KV interface {
 	// Range(beginKey []byte, endKey []byte) (Iterator, error)
 	// Prefix(prefix []byte) (Iterator, error)
 	// BatchRange(beginKey []byte, endKey []byte) (Iterator, error)
+
 	Close() error
 }

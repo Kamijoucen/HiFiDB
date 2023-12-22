@@ -1,20 +1,30 @@
 package kv
 
-// |----------------------------|
-// |          key size			|
-// |----------------------------|
-// |          key data          |
-// |----------------------------|
-// |          value size        |
-// |----------------------------|
-// |          value data        |
-// |----------------------------|
+// |-------------------------------------|
+// | key size | key | value size | value |
+// |-------------------------------------|
 
-type ssItem struct {
+const (
+	MAGIC_NUMBER = 12138
+)
+
+type DataItem struct {
 	Key   []byte
 	Value []byte
 }
 
+type IndexItem struct {
+	Key    []byte // key
+	Offset uint64 // 数据块的偏移量
+}
+
+type FooterItem struct {
+	IndexOffset uint64 // 索引块的偏移量
+	IndexLen    uint64 // 索引块的长度
+	Magic       uint32 // 魔数
+}
+
 type SSTable2 struct {
-	data []*ssItem
+	DataBlocks  []*DataItem
+	IndexBlocks []*IndexItem
 }
