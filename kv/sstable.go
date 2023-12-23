@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 
 	"github.com/kamijoucen/hifidb/common"
 	"github.com/kamijoucen/hifidb/config"
@@ -22,6 +23,9 @@ type DataItem struct {
 	Value []byte
 }
 
+// index block设计可以优化，如果一个key的value很大，那么这个key的索引就会很大
+// 这里可以参考leveldb中的共享前缀算法
+// 并且index item不在指向每一个key的起始位置，而是指向一个小data block的尾部
 type IndexItem struct {
 	Key    []byte // key
 	Offset uint64 // 数据块的偏移量
@@ -34,6 +38,10 @@ type FooterItem struct {
 	Magic       uint32 // 魔数
 }
 
+// TODO
+// 目前设计有点问题，sstable中一个大DataBlock中应该分为多个小block
+// 考虑给每个小datablock添加校验和
+// 而 index block 的索引指向小datablock的尾数据item的起始处
 type SSTable struct {
 	DataBlocks  []*DataItem
 	IndexBlocks []*IndexItem
@@ -44,6 +52,7 @@ type SSTable struct {
 // meta cache
 // level manager
 type sstManager struct {
+	lock        sync.RWMutex
 	fileCache   map[string]*common.SafeFile
 	metaManager *metaManager
 	walManager  *walManager
@@ -60,6 +69,7 @@ func NewSstManager() *sstManager {
 // @Deprecated 不应该直接写入一个sst，sst是否写入应该在manager中控制
 // TODO sst 文件初始化和文件写入需要分离，sst写入仅针对对应文件加锁
 func (sm *sstManager) WriteTable(sst *SSTable) error {
+
 	nId, err := sm.metaManager.NextSstId()
 	if err != nil {
 		return err
@@ -69,6 +79,10 @@ func (sm *sstManager) WriteTable(sst *SSTable) error {
 	if err := file.Open(os.O_RDWR | os.O_CREATE | os.O_APPEND); err != nil {
 		return err
 	}
+
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
 	sm.fileCache[sstPath] = file
 
 	bytes, err := EnCodeSSTable(sst)
@@ -80,3 +94,5 @@ func (sm *sstManager) WriteTable(sst *SSTable) error {
 	}
 	return nil
 }
+
+// read sst
