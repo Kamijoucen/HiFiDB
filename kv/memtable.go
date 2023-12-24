@@ -1,12 +1,17 @@
 package kv
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/kamijoucen/hifidb/common"
+	"github.com/kamijoucen/hifidb/config"
+)
 
 type memTableManager struct {
 	lock       sync.RWMutex
 	walManager *walManager
 	sstManager *sstManager
-	sortTable  SortTable[[]byte, *memValue]
+	sortTable  common.SortTable[[]byte, *memValue]
 	size       uint64
 }
 
@@ -24,11 +29,6 @@ func NewMemTable() *memTableManager {
 	}
 }
 
-func size(key []byte, val *memValue) uint64 {
-	// key + value + 1
-	return uint64(len(key)) + 1 + uint64(len(val.Value))
-}
-
 // TODO
 // 按道理来说，add和update在lsm结构中都是insert，因为合并阶段会删除老数据
 // 可以考虑做一个update语义操作，用来更新部分数据，并且在合并时填充其他数据
@@ -36,12 +36,16 @@ func (m *memTableManager) Add(key []byte, value []byte) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
+	val := &memValue{NORMAL_VALUE, value}
 	// item size
-	m.size += size(key, &memValue{NORMAL_VALUE, value})
-	if err := m.sortTable.Add(key, &memValue{NORMAL_VALUE, value}); err != nil {
+	m.size += size(key, val)
+	if err := m.sortTable.Add(key, val); err != nil {
 		return err
 	}
-	// TODO check memTable size
+	// check memTable size
+	if m.size >= config.GlobalConfig.SSTableSize {
+		m.flush()
+	}
 	return nil
 }
 
@@ -57,4 +61,24 @@ func (m *memTableManager) Delete(key []byte) ([]byte, error) {
 // get
 func (m *memTableManager) Get() ([]byte, error) {
 	return nil, nil
+}
+
+func size(key []byte, val *memValue) uint64 {
+	// key + value + 1
+	return uint64(len(key)) + 1 + uint64(len(val.Value))
+}
+
+// flush
+func (m *memTableManager) flush() {
+	tempSt := m.sortTable
+	m.sortTable = NewBSTTable()
+	m.size = 0
+	// real flush
+	go func() {
+		sst, err := MemTableToSSTable(tempSt)
+		if err != nil {
+			panic(err)
+		}
+		m.sstManager.WriteTable(sst)
+	}()
 }

@@ -3,6 +3,7 @@ package kv
 import (
 	"encoding/binary"
 
+	"github.com/kamijoucen/hifidb/common"
 	"github.com/kamijoucen/hifidb/config"
 )
 
@@ -93,4 +94,8 @@ func StrToBytes(s string, len int) []byte {
 	b := make([]byte, len)
 	copy(b, []byte(s))
 	return b
+}
+
+func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) (*SSTable, error) {
+	return nil, nil
 }
