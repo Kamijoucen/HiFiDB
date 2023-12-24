@@ -18,11 +18,19 @@ const (
 	MAGIC_NUMBER = uint32(121213138)
 )
 
+const (
+	// 值标识
+	NORMAL_VALUE = uint8(0)
+	DELETE_VALUE
+	UPDATE_VALUE
+)
+
 type DataItem struct {
 	Key   []byte
 	Value []byte
 }
 
+// TODO
 // index block设计可以优化，如果一个key的value很大，那么这个key的索引就会很大
 // 这里可以参考leveldb中的共享前缀算法
 // 并且index item不在指向每一个key的起始位置，而是指向一个小data block的尾部
