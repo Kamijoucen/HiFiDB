@@ -10,7 +10,7 @@ func TestWriteSSTable(t *testing.T) {
 
 	sm := NewSstManager()
 
-	sst := &SSTable{
+	sst := &ssTable{
 		DataBlocks: []*DataItem{
 			{
 				Key:   []byte("11111111111111111111111111111111111111111111111111"),

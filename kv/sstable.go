@@ -50,10 +50,15 @@ type FooterItem struct {
 // 目前设计有点问题，sstable中一个大DataBlock中应该分为多个小block
 // 考虑给每个小datablock添加校验和
 // 而 index block 的索引指向小datablock的尾数据item的起始处
-type SSTable struct {
+type ssTable struct {
 	DataBlocks  []*DataItem
 	IndexBlocks []*IndexItem
 	FooterItem  *FooterItem
+}
+
+// new sst
+func NewSSTable() *ssTable {
+	return &ssTable{}
 }
 
 // data cache
@@ -76,8 +81,11 @@ func NewSstManager() *sstManager {
 
 // @Deprecated 不应该直接写入一个sst，sst是否写入应该在manager中控制
 // TODO sst 文件初始化和文件写入需要分离，sst写入仅针对对应文件加锁
-func (sm *sstManager) WriteTable(sst *SSTable) error {
-
+func (sm *sstManager) WriteTable(sst *ssTable) error {
+	// check nil
+	if sst == nil || len(sst.DataBlocks) == 0 {
+		return nil
+	}
 	nId, err := sm.metaManager.NextSstId()
 	if err != nil {
 		return err

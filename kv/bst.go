@@ -20,6 +20,12 @@ type bstNode struct {
 	right *bstNode
 }
 
+type bstIterator struct {
+	current   *bstNode
+	sortTable *bstTable
+	stack     []*bstNode
+}
+
 // NewBSTTable 创建一个新的二分查找树。
 func NewBSTTable() *bstTable {
 	return &bstTable{}
@@ -112,6 +118,34 @@ func (bst *bstTable) Get(key []byte) (*memValue, error) {
 
 // Iter
 func (bst *bstTable) Iter() common.Iterator[[]byte, *memValue] {
-	// TODO
-	return nil
+	iter := &bstIterator{nil, bst, make([]*bstNode, 0)}
+	node := bst.root
+	for node != nil {
+		iter.stack = append(iter.stack, node)
+		node = node.left
+	}
+	return iter
+}
+
+func (iter *bstIterator) Next() bool {
+	if len(iter.stack) == 0 {
+		return false
+	}
+	iter.current = iter.stack[len(iter.stack)-1]
+	iter.stack = iter.stack[:len(iter.stack)-1]
+
+	node := iter.current.right
+	for node != nil {
+		iter.stack = append(iter.stack, node)
+		node = node.left
+	}
+	return true
+}
+
+func (iter *bstIterator) Key() []byte {
+	return iter.current.key
+}
+
+func (iter *bstIterator) Value() *memValue {
+	return iter.current.value
 }

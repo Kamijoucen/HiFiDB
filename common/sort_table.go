@@ -3,7 +3,6 @@ package common
 // iterator
 type Iterator[K any, V any] interface {
 	Next() bool
-	Prev() bool
 	Key() K
 	Value() V
 }

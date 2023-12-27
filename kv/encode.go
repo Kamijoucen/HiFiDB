@@ -15,7 +15,7 @@ type indexPart struct {
 }
 
 // TODO 考虑改为增量写入
-func EnCodeSSTable(sst *SSTable) ([]byte, error) {
+func EnCodeSSTable(sst *ssTable) ([]byte, error) {
 
 	allBytes := make([]byte, 0, config.GlobalConfig.SSTableSize)
 
@@ -96,6 +96,13 @@ func StrToBytes(s string, len int) []byte {
 	return b
 }
 
-func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) (*SSTable, error) {
-	return nil, nil
+func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) (*ssTable, error) {
+	items := make([]*DataItem, 0)
+	iter := memTable.Iter()
+	for iter.Next() {
+		items = append(items, &DataItem{iter.Key(), iter.Value().Value})
+	}
+	sst := NewSSTable()
+	sst.DataBlocks = items
+	return sst, nil
 }

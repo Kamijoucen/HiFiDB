@@ -68,17 +68,30 @@ func size(key []byte, val *memValue) uint64 {
 	return uint64(len(key)) + 1 + uint64(len(val.Value))
 }
 
+// close
+func (m *memTableManager) Close() {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.flush()
+}
+
 // flush
 func (m *memTableManager) flush() {
 	tempSt := m.sortTable
 	m.sortTable = NewBSTTable()
 	m.size = 0
 	// real flush
+	// TODO 这里要处理sst写入失败的情况
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
 		sst, err := MemTableToSSTable(tempSt)
 		if err != nil {
 			panic(err)
 		}
 		m.sstManager.WriteTable(sst)
+		wg.Done()
 	}()
+	wg.Wait()
 }
