@@ -105,7 +105,7 @@ func (sm *sstManager) WriteTable(sst *ssTable) error {
 	if err != nil {
 		return err
 	}
-	if _, err := file.Write(bytes); err != nil {
+	if _, err := file.UnsafeWrite(bytes); err != nil {
 		return err
 	}
 	return nil

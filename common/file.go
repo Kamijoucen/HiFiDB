@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"os"
 	"sync"
 )
@@ -78,6 +79,41 @@ func (sf *SafeFile) Close() error {
 func (sf *SafeFile) IsExist() bool {
 	sf.lock.RLock()
 	defer sf.lock.RUnlock()
+	if _, err := os.Stat(sf.path); err == nil {
+		return true
+	}
+	return false
+}
+
+func (sf *SafeFile) UnsafeReadAt(b []byte, off int64) (n int, err error) {
+	if sf.state != OPEN {
+		return 0, errors.New("file not open")
+	}
+	return sf.f.ReadAt(b, off)
+}
+
+func (sf *SafeFile) UnsafeRead(b []byte) (n int, err error) {
+	if sf.state != OPEN {
+		return 0, errors.New("file not open")
+	}
+	return sf.f.Read(b)
+}
+
+func (sf *SafeFile) UnsafeWriteAt(b []byte, off int64) (n int, err error) {
+	if sf.state != OPEN {
+		return 0, errors.New("file not open")
+	}
+	return sf.f.WriteAt(b, off)
+}
+
+func (sf *SafeFile) UnsafeWrite(b []byte) (n int, err error) {
+	if sf.state != OPEN {
+		return 0, errors.New("file not open")
+	}
+	return sf.f.Write(b)
+}
+
+func (sf *SafeFile) UnsafeIsExist() bool {
 	if _, err := os.Stat(sf.path); err == nil {
 		return true
 	}

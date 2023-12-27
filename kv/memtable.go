@@ -9,6 +9,7 @@ import (
 
 type memTableManager struct {
 	lock       sync.RWMutex
+	flushing   chan struct{}
 	walManager *walManager
 	sstManager *sstManager
 	sortTable  common.SortTable[[]byte, *memValue]
@@ -22,6 +23,7 @@ type memValue struct {
 
 func NewMemTable() *memTableManager {
 	return &memTableManager{
+		flushing:   make(chan struct{}, 1),
 		sortTable:  NewBSTTable(),
 		walManager: NewWalManager(),
 		sstManager: NewSstManager(),
@@ -73,25 +75,30 @@ func (m *memTableManager) Close() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.flush()
+
+	select {
+	case <-m.flushing:
+	default:
+	}
 }
 
 // flush
 func (m *memTableManager) flush() {
+
+	m.flushing <- struct{}{}
+	defer func() { <-m.flushing }()
+
 	tempSt := m.sortTable
 	m.sortTable = NewBSTTable()
 	m.size = 0
+
 	// real flush
 	// TODO 这里要处理sst写入失败的情况
-
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
 	go func() {
 		sst, err := MemTableToSSTable(tempSt)
 		if err != nil {
 			panic(err)
 		}
 		m.sstManager.WriteTable(sst)
-		wg.Done()
 	}()
-	wg.Wait()
 }

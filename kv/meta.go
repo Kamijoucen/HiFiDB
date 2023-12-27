@@ -67,10 +67,10 @@ func (mm *metaManager) initCurrentPoint() error {
 	mm.pointFile = current
 
 	b := make([]byte, 8)
-	n, _ := current.Read(b)
+	n, _ := current.UnsafeRead(b)
 	if n == 0 {
 		mm.curMetaId = 1
-		if _, err := current.Write(Uint64ToBytes(mm.curMetaId)); err != nil {
+		if _, err := current.UnsafeWrite(Uint64ToBytes(mm.curMetaId)); err != nil {
 			return err
 		}
 	} else {
@@ -93,7 +93,7 @@ func (mm *metaManager) NextSstId() (uint64, error) {
 }
 
 func (mm *metaManager) writeNextSstId(sstId uint64) error {
-	if _, err := mm.curMetaFile.Write(EnCodeNextId(NEXT_SST_FILE_ID_NODE, sstId)); err != nil {
+	if _, err := mm.curMetaFile.UnsafeWrite(EnCodeNextId(NEXT_SST_FILE_ID_NODE, sstId)); err != nil {
 		return err
 	}
 	return nil
@@ -102,7 +102,7 @@ func (mm *metaManager) writeNextSstId(sstId uint64) error {
 func (mm *metaManager) loadMetaFile() error {
 	b := make([]byte, 1)
 	for {
-		n, err := mm.curMetaFile.Read(b)
+		n, err := mm.curMetaFile.UnsafeRead(b)
 		if err != nil && err != io.EOF {
 			return err
 		}
@@ -112,7 +112,7 @@ func (mm *metaManager) loadMetaFile() error {
 		switch BytesToUint8(b) {
 		case NEXT_SST_FILE_ID_NODE:
 			bytes := make([]byte, 8)
-			n, err := mm.curMetaFile.Read(bytes)
+			n, err := mm.curMetaFile.UnsafeRead(bytes)
 			// TODO 处理文件损坏的情况
 			if err != nil {
 				return err

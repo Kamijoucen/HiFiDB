@@ -32,12 +32,9 @@ func TestBSTTable(t *testing.T) {
 
 // mamManager test
 func TestMemTableManager(t *testing.T) {
-
 	m := NewMemTable()
-
 	for i := 0; i < 100000; i++ {
-		m.Add(Uint32ToBytes(uint32(i)), []byte("value1"))
+		m.Add(Uint32ToBytes(uint32(i)), []byte("测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa"))
 	}
-
 	m.Close()
 }
