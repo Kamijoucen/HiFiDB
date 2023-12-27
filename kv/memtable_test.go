@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
 // test
@@ -20,7 +22,7 @@ func TestMemTable(t *testing.T) {
 func TestBSTTable(t *testing.T) {
 	m := NewBSTTable()
 	for i := 0; i < 100; i++ {
-		m.Add(Uint32ToBytes(uint32(i)), &memValue{NORMAL_VALUE, []byte("value1")})
+		m.Add(Uint32ToBytes(uint32(i)), &memValue{entity.NORMAL_VALUE, []byte("value1")})
 	}
 	// iter
 	iter := m.Iter()
@@ -34,7 +36,7 @@ func TestBSTTable(t *testing.T) {
 func TestMemTableManager(t *testing.T) {
 	m := NewMemTable()
 	for i := 0; i < 100000; i++ {
-		m.Add(Uint32ToBytes(uint32(i)), []byte("测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa测试测试value1dasfsaflisicenaaaaaaaaaaa"))
+		m.Add(Uint32ToBytes(uint32(i)), []byte("测试测试abc"))
 	}
 	m.Close()
 }

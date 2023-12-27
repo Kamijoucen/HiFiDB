@@ -9,6 +9,7 @@ func loadConfigFile() *DBConfig {
 
 type DBConfig struct {
 	DBPath      string
+	DBBlockSize uint64
 	SSTableSize uint64
 	L0Size      uint64
 	L1Size      uint64
@@ -21,6 +22,13 @@ type DBConfigOption func(*DBConfig)
 func WithDBPath(path string) DBConfigOption {
 	return func(config *DBConfig) {
 		config.DBPath = path
+	}
+}
+
+// block size
+func WithDBBlockSize(size uint64) DBConfigOption {
+	return func(config *DBConfig) {
+		config.DBBlockSize = size
 	}
 }
 
@@ -55,6 +63,7 @@ func WithSSTableSize(size uint64) DBConfigOption {
 func NewDBConfig(options ...DBConfigOption) *DBConfig {
 	config := &DBConfig{
 		DBPath:      "../tempdb",
+		DBBlockSize: 4 * 1024,         // 4KB
 		SSTableSize: 1 * 1024 * 1024,  // 1MB
 		L0Size:      4 * 1024 * 1024,  // 4MB
 		L1Size:      10 * 1024 * 1024, // 10MB

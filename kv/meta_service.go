@@ -9,22 +9,10 @@ import (
 
 	"github.com/kamijoucen/hifidb/common"
 	"github.com/kamijoucen/hifidb/config"
+	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
-const (
-	SST_FILE_NEXT_ID  = "sst_file_next_id"
-	META_FILE_NEXT_ID = "meta_file_next_id"
-)
-
-// node flag
-const (
-	NEXT_SST_FILE_ID_NODE = uint8(iota)
-	NEXT_META_FILE_ID_NODE
-	SST_META_NODE
-	DELETE_SST_FILE
-)
-
-type metaManager struct {
+type metaService struct {
 	lock        sync.RWMutex
 	pointFile   *common.SafeFile
 	curMetaFile *common.SafeFile
@@ -32,8 +20,8 @@ type metaManager struct {
 	curSstId    uint64
 }
 
-func NewMetaManager() *metaManager {
-	m := &metaManager{}
+func NewMetaService() *metaService {
+	m := &metaService{}
 	if err := m.loadPoint(); err != nil {
 		panic(err)
 	}
@@ -43,7 +31,7 @@ func NewMetaManager() *metaManager {
 	return m
 }
 
-func (mm *metaManager) loadPoint() error {
+func (mm *metaService) loadPoint() error {
 	mm.lock.Lock()
 	defer mm.lock.Unlock()
 
@@ -59,7 +47,7 @@ func (mm *metaManager) loadPoint() error {
 	return nil
 }
 
-func (mm *metaManager) initCurrentPoint() error {
+func (mm *metaService) initCurrentPoint() error {
 	current := common.NewSafeFile(filepath.Join(config.GlobalConfig.DBPath, "CURRENT"))
 	if err := current.Open(os.O_RDWR | os.O_CREATE); err != nil {
 		return err
@@ -79,7 +67,7 @@ func (mm *metaManager) initCurrentPoint() error {
 	return nil
 }
 
-func (mm *metaManager) NextSstId() (uint64, error) {
+func (mm *metaService) NextSstId() (uint64, error) {
 
 	mm.lock.Lock()
 	defer mm.lock.Unlock()
@@ -92,14 +80,14 @@ func (mm *metaManager) NextSstId() (uint64, error) {
 	return temp, nil
 }
 
-func (mm *metaManager) writeNextSstId(sstId uint64) error {
-	if _, err := mm.curMetaFile.UnsafeWrite(EnCodeNextId(NEXT_SST_FILE_ID_NODE, sstId)); err != nil {
+func (mm *metaService) writeNextSstId(sstId uint64) error {
+	if _, err := mm.curMetaFile.UnsafeWrite(EnCodeNextId(entity.NEXT_SST_FILE_ID_NODE, sstId)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (mm *metaManager) loadMetaFile() error {
+func (mm *metaService) loadMetaFile() error {
 	b := make([]byte, 1)
 	for {
 		n, err := mm.curMetaFile.UnsafeRead(b)
@@ -110,7 +98,7 @@ func (mm *metaManager) loadMetaFile() error {
 			break
 		}
 		switch BytesToUint8(b) {
-		case NEXT_SST_FILE_ID_NODE:
+		case entity.NEXT_SST_FILE_ID_NODE:
 			bytes := make([]byte, 8)
 			n, err := mm.curMetaFile.UnsafeRead(bytes)
 			// TODO 处理文件损坏的情况

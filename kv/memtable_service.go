@@ -5,13 +5,13 @@ import (
 
 	"github.com/kamijoucen/hifidb/common"
 	"github.com/kamijoucen/hifidb/config"
+	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
 type memTableManager struct {
 	lock       sync.RWMutex
-	flushing   chan struct{}
 	walManager *walManager
-	sstManager *sstManager
+	sstManager *sstService
 	sortTable  common.SortTable[[]byte, *memValue]
 	size       uint64
 }
@@ -23,10 +23,9 @@ type memValue struct {
 
 func NewMemTable() *memTableManager {
 	return &memTableManager{
-		flushing:   make(chan struct{}, 1),
 		sortTable:  NewBSTTable(),
 		walManager: NewWalManager(),
-		sstManager: NewSstManager(),
+		sstManager: NewSstService(),
 		size:       0,
 	}
 }
@@ -38,7 +37,7 @@ func (m *memTableManager) Add(key []byte, value []byte) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	val := &memValue{NORMAL_VALUE, value}
+	val := &memValue{entity.NORMAL_VALUE, value}
 	// item size
 	m.size += size(key, val)
 	if err := m.sortTable.Add(key, val); err != nil {
@@ -46,7 +45,7 @@ func (m *memTableManager) Add(key []byte, value []byte) error {
 	}
 	// check memTable size
 	if m.size >= config.GlobalConfig.SSTableSize {
-		m.flush()
+		m.flush(false)
 	}
 	return nil
 }
@@ -74,31 +73,24 @@ func size(key []byte, val *memValue) uint64 {
 func (m *memTableManager) Close() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	m.flush()
-
-	select {
-	case <-m.flushing:
-	default:
-	}
+	m.flush(true)
 }
 
 // flush
-func (m *memTableManager) flush() {
-
-	m.flushing <- struct{}{}
-	defer func() { <-m.flushing }()
-
+func (m *memTableManager) flush(isWaitFlush bool) {
 	tempSt := m.sortTable
 	m.sortTable = NewBSTTable()
 	m.size = 0
-
-	// real flush
 	// TODO 这里要处理sst写入失败的情况
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
 	go func() {
-		sst, err := MemTableToSSTable(tempSt)
-		if err != nil {
-			panic(err)
-		}
-		m.sstManager.WriteTable(sst)
+		m.sstManager.WriteTable(MemTableToSSTable(tempSt))
+		wg.Done()
 	}()
+
+	if isWaitFlush {
+		wg.Wait()
+	}
 }

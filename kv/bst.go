@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/kamijoucen/hifidb/common"
+	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
 // bstTable 二分查找树的实现。
@@ -89,7 +90,7 @@ func (bst *bstTable) Update(key []byte, value *memValue) error {
 
 // Remove
 func (bst *bstTable) Remove(key []byte) error {
-	return bst.Add(key, &memValue{DELETE_VALUE, nil})
+	return bst.Add(key, &memValue{entity.DELETE_VALUE, nil})
 }
 
 // Get

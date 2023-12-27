@@ -5,6 +5,7 @@ import (
 
 	"github.com/kamijoucen/hifidb/common"
 	"github.com/kamijoucen/hifidb/config"
+	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
 type indexPart struct {
@@ -15,12 +16,12 @@ type indexPart struct {
 }
 
 // TODO 考虑改为增量写入
-func EnCodeSSTable(sst *ssTable) ([]byte, error) {
+func EnCodeSSTable(sst *entity.SsTable) ([]byte, error) {
 
 	allBytes := make([]byte, 0, config.GlobalConfig.SSTableSize)
 
-	indexList := make([]*indexPart, 0, len(sst.DataBlocks))
-	for _, block := range sst.DataBlocks {
+	indexList := make([]*indexPart, 0, len(sst.DataItems))
+	for _, block := range sst.DataItems {
 		keyLen := uint32(len(block.Key))
 		// data block
 		allBytes = append(allBytes, Uint32ToBytes(keyLen)...)
@@ -44,7 +45,7 @@ func EnCodeSSTable(sst *ssTable) ([]byte, error) {
 	// footer
 	allBytes = append(allBytes, Uint64ToBytes(indexOffset)...)
 	allBytes = append(allBytes, Uint64ToBytes(indexLen)...)
-	allBytes = append(allBytes, Uint32ToBytes(MAGIC_NUMBER)...)
+	allBytes = append(allBytes, Uint32ToBytes(entity.MAGIC_NUMBER)...)
 	// footer allBytes: indexOffset + indexLen + magic: 8 + 8 + 4 = 20
 	return allBytes, nil
 }
@@ -96,13 +97,13 @@ func StrToBytes(s string, len int) []byte {
 	return b
 }
 
-func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) (*ssTable, error) {
-	items := make([]*DataItem, 0)
+func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) *entity.SsTable {
+	items := make([]*entity.DataItem, 0)
 	iter := memTable.Iter()
 	for iter.Next() {
-		items = append(items, &DataItem{iter.Key(), iter.Value().Value})
+		items = append(items, &entity.DataItem{iter.Key(), iter.Value().Value})
 	}
-	sst := NewSSTable()
-	sst.DataBlocks = items
-	return sst, nil
+	sst := &entity.SsTable{}
+	sst.DataItems = items
+	return sst
 }

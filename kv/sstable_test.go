@@ -3,15 +3,17 @@ package kv
 import (
 	"sync"
 	"testing"
+
+	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
 // write sstable test
 func TestWriteSSTable(t *testing.T) {
 
-	sm := NewSstManager()
+	sm := NewSstService()
 
-	sst := &ssTable{
-		DataBlocks: []*DataItem{
+	sst := &entity.SsTable{
+		DataItems: []*entity.DataItem{
 			{
 				Key:   []byte("11111111111111111111111111111111111111111111111111"),
 				Value: []byte("value122222222222222222222222222222222222222222"),
