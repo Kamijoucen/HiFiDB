@@ -61,6 +61,9 @@ func (mm *metaService) initCurrentPoint() error {
 		if _, err := current.UnsafeWrite(Uint64ToBytes(mm.curMetaId)); err != nil {
 			return err
 		}
+		if err := current.Flush(); err != nil {
+			return err
+		}
 	} else {
 		mm.curMetaId = BytesToUint64(b)
 	}
@@ -82,6 +85,9 @@ func (mm *metaService) NextSstId() (uint64, error) {
 
 func (mm *metaService) writeNextSstId(sstId uint64) error {
 	if _, err := mm.curMetaFile.UnsafeWrite(EnCodeNextId(entity.NEXT_SST_FILE_ID_NODE, sstId)); err != nil {
+		return err
+	}
+	if err := mm.curMetaFile.Flush(); err != nil {
 		return err
 	}
 	return nil

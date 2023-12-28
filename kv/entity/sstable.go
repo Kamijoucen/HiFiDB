@@ -11,6 +11,12 @@ const (
 	UPDATE_VALUE
 )
 
+const (
+	// 数据块压缩标识
+	NO_COMPRESS = uint8(iota)
+	SNAPPY_COMPRESS
+)
+
 type DataBlock struct {
 	Items      []*DataItem // 数据项
 	ItemOffset []uint64    // 数据偏移量
