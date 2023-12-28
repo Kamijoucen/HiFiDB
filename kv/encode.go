@@ -101,7 +101,7 @@ func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) *entity.SsT
 	items := make([]*entity.DataItem, 0)
 	iter := memTable.Iter()
 	for iter.Next() {
-		items = append(items, &entity.DataItem{iter.Key(), iter.Value().Value})
+		items = append(items, &entity.DataItem{Key: iter.Key(), Value: iter.Value().Value})
 	}
 	sst := &entity.SsTable{}
 	sst.DataItems = items

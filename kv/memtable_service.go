@@ -45,7 +45,7 @@ func (m *memTableManager) Add(key []byte, value []byte) error {
 	}
 	// check memTable size
 	if m.size >= config.GlobalConfig.SSTableSize {
-		m.flush(false)
+		m.flush()
 	}
 	return nil
 }
@@ -73,24 +73,14 @@ func size(key []byte, val *memValue) uint64 {
 func (m *memTableManager) Close() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	m.flush(true)
+	m.flush()
+	m.sstManager.Close()
 }
 
 // flush
-func (m *memTableManager) flush(isWaitFlush bool) {
+func (m *memTableManager) flush() {
 	tempSt := m.sortTable
 	m.sortTable = NewBSTTable()
 	m.size = 0
-	// TODO 这里要处理sst写入失败的情况
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-
-	go func() {
-		m.sstManager.WriteTable(MemTableToSSTable(tempSt))
-		wg.Done()
-	}()
-
-	if isWaitFlush {
-		wg.Wait()
-	}
+	m.sstManager.SendSstWrite(MemTableToSSTable(tempSt))
 }

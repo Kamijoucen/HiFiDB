@@ -6,14 +6,16 @@ const (
 
 const (
 	// 值标识
-	NORMAL_VALUE = uint8(0)
+	NORMAL_VALUE = uint8(iota)
 	DELETE_VALUE
 	UPDATE_VALUE
 )
 
 type DataBlock struct {
-	Items      []*DataItem
-	ItemOffset []uint32
+	Items      []*DataItem // 数据项
+	ItemOffset []uint64    // 数据偏移量
+	CompFlag   uint8       // 压缩标识
+	Checksum   uint32      // 校验和
 }
 
 type DataItem struct {
@@ -26,9 +28,9 @@ type DataItem struct {
 // 这里可以参考leveldb中的共享前缀算法
 // 并且index item不在指向每一个key的起始位置，而是指向一个小data block的尾部
 type IndexItem struct {
-	Key    []byte // key
-	Offset uint64 // 数据块的偏移量
-	Length uint32 // 数据块的长度
+	Key      []byte // key
+	Offset   uint64 // 数据块的偏移量
+	Length   uint32 // 数据块的长度
 }
 
 type FooterItem struct {

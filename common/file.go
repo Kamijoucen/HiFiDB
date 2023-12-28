@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"errors"
 	"os"
 	"sync"
@@ -18,6 +19,7 @@ type SafeFile struct {
 	path  string
 	state uint8
 	f     *os.File
+	buf   *bufio.Writer
 }
 
 func NewSafeFile(path string) *SafeFile {
@@ -38,6 +40,7 @@ func (sf *SafeFile) Open(flag int) error {
 		return err
 	}
 	sf.f = f
+	sf.buf = bufio.NewWriter(f)
 	sf.state = OPEN
 	return nil
 }
@@ -54,35 +57,10 @@ func (sf *SafeFile) Read(b []byte) (n int, err error) {
 	return sf.f.Read(b)
 }
 
-func (sf *SafeFile) WriteAt(b []byte, off int64) (n int, err error) {
-	sf.lock.Lock()
-	defer sf.lock.Unlock()
-	return sf.f.WriteAt(b, off)
-}
-
 func (sf *SafeFile) Write(b []byte) (n int, err error) {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
-	return sf.f.Write(b)
-}
-
-func (sf *SafeFile) Close() error {
-	sf.lock.Lock()
-	defer sf.lock.Unlock()
-	if sf.state == CLOSE || sf.state == NONE {
-		return nil
-	}
-	sf.state = CLOSE
-	return sf.f.Close()
-}
-
-func (sf *SafeFile) IsExist() bool {
-	sf.lock.RLock()
-	defer sf.lock.RUnlock()
-	if _, err := os.Stat(sf.path); err == nil {
-		return true
-	}
-	return false
+	return sf.buf.Write(b)
 }
 
 func (sf *SafeFile) UnsafeReadAt(b []byte, off int64) (n int, err error) {
@@ -99,21 +77,39 @@ func (sf *SafeFile) UnsafeRead(b []byte) (n int, err error) {
 	return sf.f.Read(b)
 }
 
-func (sf *SafeFile) UnsafeWriteAt(b []byte, off int64) (n int, err error) {
-	if sf.state != OPEN {
-		return 0, errors.New("file not open")
-	}
-	return sf.f.WriteAt(b, off)
-}
-
 func (sf *SafeFile) UnsafeWrite(b []byte) (n int, err error) {
 	if sf.state != OPEN {
 		return 0, errors.New("file not open")
 	}
-	return sf.f.Write(b)
+	return sf.buf.Write(b)
 }
 
-func (sf *SafeFile) UnsafeIsExist() bool {
+// flush
+func (sf *SafeFile) Flush() error {
+	sf.lock.Lock()
+	defer sf.lock.Unlock()
+	if sf.state != OPEN {
+		return errors.New("file not open")
+	}
+	return sf.buf.Flush()
+}
+
+func (sf *SafeFile) Close() error {
+	sf.lock.Lock()
+	defer sf.lock.Unlock()
+	if sf.state == CLOSE || sf.state == NONE {
+		return nil
+	}
+	sf.state = CLOSE
+	if err := sf.buf.Flush(); err != nil {
+		return err
+	}
+	return sf.f.Close()
+}
+
+func (sf *SafeFile) IsExist() bool {
+	sf.lock.RLock()
+	defer sf.lock.RUnlock()
 	if _, err := os.Stat(sf.path); err == nil {
 		return true
 	}
