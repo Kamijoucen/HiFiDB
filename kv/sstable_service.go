@@ -75,47 +75,89 @@ func writeAll(file *common.SafeFile, sst *entity.SsTable) error {
 
 // write memTable to sst
 func write(file *common.SafeFile, sst *entity.SsTable) error {
-
+	// 整个sst的大小
 	sstBytesSize := uint64(0)
-	// 每个data block的最后一个key
+	// sst中每个data block的最后一个key
 	sstBlockLastKey := make([]*tuple, 0)
-
-	// data block default 4kb
-	blockBytes := make([]byte, 0, config.GlobalConfig.DBBlockSize)
-	// data block key offset
+	// 数据块中每个key的offset
 	blockKeyOffset := make([]uint64, 0)
+	// 数据块，默认4kb，可以配置,额外.25的数据用于存放尾部信息
+	dataBlockBytes := make([]byte, 0, uint32(float32(config.GlobalConfig.DBBlockSize)*1.25))
 
-	// write data block
-	for _, block := range sst.DataItems {
+	for i, block := range sst.DataItems {
 
+		// 数据块中当前item的offset，指向key的起始
 		blockKeyOffset = append(blockKeyOffset, sstBytesSize)
 
+		// 数据item的key的长度
 		keyByteSize := len(block.Key)
+		// 数据item的value的长度
 		valueByteSize := len(block.Value)
-		// data block
+
+		// 数据项目结构：key长度 + key + value长度 + value
+		// 4 + keyByteSize + 4 + valueByteSize
 		sstBytesSize += 4
-		blockBytes = append(blockBytes, Uint32ToBytes(uint32(keyByteSize))...)
+		dataBlockBytes = append(dataBlockBytes, Uint32ToBytes(uint32(keyByteSize))...)
 		sstBytesSize += uint64(keyByteSize)
-		blockBytes = append(blockBytes, block.Key...)
+		dataBlockBytes = append(dataBlockBytes, block.Key...)
 		sstBytesSize += 4
-		blockBytes = append(blockBytes, Uint32ToBytes(uint32(valueByteSize))...)
+		dataBlockBytes = append(dataBlockBytes, Uint32ToBytes(uint32(valueByteSize))...)
 		sstBytesSize += uint64(valueByteSize)
-		blockBytes = append(blockBytes, block.Value...)
+		dataBlockBytes = append(dataBlockBytes, block.Value...)
 
-		// if data block size > 4kb, write to file
-		if len(blockBytes) >= int(config.GlobalConfig.DBBlockSize) {
-			// generate index block and
+		// 如果当前数据块的大于配置的数据块大小，或者是最后一个数据项，需要将数据块写入文件
+		if uint64(len(dataBlockBytes)) >= config.GlobalConfig.DBBlockSize || i == len(sst.DataItems) {
 
-			if _, err := file.UnsafeWrite(blockBytes); err != nil {
-				panic(err)
+			// 数据块中索引块的起始offset
+			blockIndexOffset := sstBytesSize
+			// 索引块的长度，每个索引都是unit8
+			blockIndexLen := uint32(len(blockKeyOffset)) * 8
+
+			// 向sst文件大小计数添加索引块的长度
+			sstBytesSize += uint64(blockIndexLen)
+
+			// 将数据项的索引添加到数据块的尾部
+			for _, offset := range blockKeyOffset {
+				dataBlockBytes = append(dataBlockBytes, Uint64ToBytes(offset)...)
 			}
-			// Record the last key of each data block, and the offset of the key in the sst
+
+			// block footer: index block offset + index block length + comp flag + checksum
+			// 8 + 4 + 1 + 4 = 17 bytes
+			sstBytesSize += 17
+
+			// 写入索引块位置 8bytes
+			dataBlockBytes = append(dataBlockBytes, Uint64ToBytes(blockIndexOffset)...)
+			// 写入索引块长度 4bytes
+			dataBlockBytes = append(dataBlockBytes, Uint32ToBytes(blockIndexLen)...)
+			// 写入压缩标识(TODO)
+			dataBlockBytes = append(dataBlockBytes, Uint8ToBytes(entity.NO_COMPRESS)...)
+			// 写入校验和(TODO)
+			dataBlockBytes = append(dataBlockBytes, Uint32ToBytes(0)...)
+
+			// 记录数据块最后一个字节的offset，key是当前数据块最后一个数据项
 			sstBlockLastKey = append(sstBlockLastKey, &tuple{First: block.Key, Second: sstBytesSize})
 
+			// 写入数据
+			if _, err := file.UnsafeWrite(dataBlockBytes); err != nil {
+				panic(err)
+			}
+
 			// clear block bytes
-			blockBytes = make([]byte, config.GlobalConfig.DBBlockSize)
+			blockKeyOffset = blockKeyOffset[:0]
+			// 如果存在单个数据块大于4kb * 1.5的情况，需要重新分配内存，避免大块内存长期占用
+			if len(dataBlockBytes) > int(float32(config.GlobalConfig.DBBlockSize)*1.5) {
+				dataBlockBytes = make([]byte, config.GlobalConfig.DBBlockSize)
+			} else {
+				dataBlockBytes = dataBlockBytes[:0]
+			}
 		}
+
 	}
+	if err := file.Flush(); err != nil {
+		panic(err)
+	}
+	// TODO 写入sst尾部信息
+
 	return nil
 }
 
