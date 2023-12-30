@@ -34,9 +34,9 @@ type DataItem struct {
 // 这里可以参考leveldb中的共享前缀算法
 // 并且index item不在指向每一个key的起始位置，而是指向一个小data block的尾部
 type IndexItem struct {
-	Key      []byte // key
-	Offset   uint64 // 数据块的偏移量
-	Length   uint32 // 数据块的长度
+	Key    []byte // key
+	Offset uint64 // 数据块的偏移量
+	Length uint32 // 数据块的长度
 }
 
 type FooterItem struct {
@@ -50,17 +50,7 @@ type FooterItem struct {
 // 考虑给每个小datablock添加校验和
 // 而 index block 的索引指向小datablock的尾数据item的起始处
 type SsTable struct {
-	DataItems   []*DataItem
+	DataBlock   []*DataBlock
 	IndexBlocks []*IndexItem
 	FooterItem  *FooterItem
-}
-
-// item size
-func ItemSize(item *DataItem) uint64 {
-	return uint64(len(item.Key)) + uint64(len(item.Value))
-}
-
-// append data item
-func AppendDataItem(sst *SsTable, item *DataItem) {
-	sst.DataItems = append(sst.DataItems, item)
 }

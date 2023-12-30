@@ -8,6 +8,7 @@ type Iterator[K any, V any] interface {
 }
 
 type SortTable[K any, V any] interface {
+	Len() uint32
 	Add(key K, value V) error
 	Get(key K) (V, error)
 	Update(key K, value V) error

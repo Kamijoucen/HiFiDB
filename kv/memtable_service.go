@@ -39,7 +39,8 @@ func (m *memTableManager) Add(key []byte, value []byte) error {
 
 	val := &memValue{entity.NORMAL_VALUE, value}
 	// item size
-	m.size += size(key, val)
+	m.size += memItemSize(key, val)
+
 	if err := m.sortTable.Add(key, val); err != nil {
 		return err
 	}
@@ -64,7 +65,7 @@ func (m *memTableManager) Get() ([]byte, error) {
 	return nil, nil
 }
 
-func size(key []byte, val *memValue) uint64 {
+func memItemSize(key []byte, val *memValue) uint64 {
 	// key + value + 1
 	return uint64(len(key)) + 1 + uint64(len(val.Value))
 }

@@ -11,6 +11,7 @@ import (
 // bstTable 二分查找树的实现。
 type bstTable struct {
 	root *bstNode
+	len  uint32
 }
 
 // bstNode 二分查找树的节点。
@@ -59,6 +60,7 @@ func (bst *bstTable) Add(key []byte, value *memValue) error {
 			}
 		}
 	}
+	bst.len++
 	return nil
 }
 
@@ -115,6 +117,11 @@ func (bst *bstTable) Get(key []byte) (*memValue, error) {
 			return node.value, nil
 		}
 	}
+}
+
+// Len
+func (bst *bstTable) Len() uint32 {
+	return bst.len
 }
 
 // Iter

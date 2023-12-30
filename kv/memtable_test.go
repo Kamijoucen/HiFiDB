@@ -36,7 +36,7 @@ func TestBSTTable(t *testing.T) {
 func TestMemTableManager(t *testing.T) {
 	m := NewMemTable()
 	for i := 0; i < 100000; i++ {
-		m.Add(Uint32ToBytes(uint32(i)), []byte("测试测试abc"))
+		m.Add(Uint32ToBytes(uint32(i)), []byte("lisicen"))
 	}
 	m.Close()
 }

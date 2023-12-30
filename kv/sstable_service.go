@@ -13,6 +13,8 @@ import (
 
 type tuple common.Tuple[[]byte, uint64]
 
+type DataItems []*entity.DataItem
+
 // data cache
 // meta cache
 // level manager
@@ -21,7 +23,7 @@ type sstService struct {
 	fileCache   map[string]*common.SafeFile
 	metaManager *metaService
 	walManager  *walManager
-	sstReceiver chan *entity.SsTable
+	sstReceiver chan DataItems
 	done        chan bool
 }
 
@@ -30,7 +32,7 @@ func NewSstService() *sstService {
 		fileCache:   make(map[string]*common.SafeFile),
 		metaManager: NewMetaService(),
 		walManager:  NewWalManager(),
-		sstReceiver: make(chan *entity.SsTable, 100),
+		sstReceiver: make(chan DataItems, 100),
 		done:        make(chan bool, 1),
 	}
 	go sst.receiveSstWrite()
@@ -40,9 +42,8 @@ func NewSstService() *sstService {
 // @Deprecated 不应该直接写入一个sst，sst是否写入应该在manager中控制
 // TODO sst 文件初始化和文件写入需要分离，sst写入仅针对对应文件加锁
 // TODO SST的写入可以改为并发写，可以使用滑动窗口协议，保证整体的写入顺序
-func (sm *sstService) WriteTable(sst *entity.SsTable) error {
-	// check nil
-	if sst == nil || len(sst.DataItems) == 0 {
+func (sm *sstService) WriteTable(dataItems DataItems) error {
+	if len(dataItems) == 0 {
 		return nil
 	}
 	nId, err := sm.metaManager.NextSstId()
@@ -55,26 +56,14 @@ func (sm *sstService) WriteTable(sst *entity.SsTable) error {
 		return err
 	}
 	sm.fileCache[sstPath] = file
-	if err := writeAll(file, sst); err != nil {
+	if _, err := write(file, dataItems); err != nil {
 		return err
 	}
 	return nil
 }
 
-// write all memTable to sst
-func writeAll(file *common.SafeFile, sst *entity.SsTable) error {
-	bytes, err := EnCodeSSTable(sst)
-	if err != nil {
-		return err
-	}
-	if _, err := file.UnsafeWrite(bytes); err != nil {
-		return err
-	}
-	return file.Flush()
-}
-
 // write memTable to sst
-func write(file *common.SafeFile, sst *entity.SsTable) error {
+func write(file *common.SafeFile, dataItems DataItems) (uint64, error) {
 	// 整个sst的大小
 	sstBytesSize := uint64(0)
 	// sst中每个data block的最后一个key
@@ -84,7 +73,7 @@ func write(file *common.SafeFile, sst *entity.SsTable) error {
 	// 数据块，默认4kb，可以配置,额外.25的数据用于存放尾部信息
 	dataBlockBytes := make([]byte, 0, uint32(float32(config.GlobalConfig.DBBlockSize)*1.25))
 
-	for i, block := range sst.DataItems {
+	for i, block := range dataItems {
 
 		// 数据块中当前item的offset，指向key的起始
 		blockKeyOffset = append(blockKeyOffset, sstBytesSize)
@@ -106,7 +95,7 @@ func write(file *common.SafeFile, sst *entity.SsTable) error {
 		dataBlockBytes = append(dataBlockBytes, block.Value...)
 
 		// 如果当前数据块的大于配置的数据块大小，或者是最后一个数据项，需要将数据块写入文件
-		if uint64(len(dataBlockBytes)) >= config.GlobalConfig.DBBlockSize || i == len(sst.DataItems) {
+		if uint64(len(dataBlockBytes)) >= config.GlobalConfig.DBBlockSize || i == len(dataItems)-1 {
 
 			// 数据块中索引块的起始offset
 			blockIndexOffset := sstBytesSize
@@ -124,7 +113,6 @@ func write(file *common.SafeFile, sst *entity.SsTable) error {
 			// block footer: index block offset + index block length + comp flag + checksum
 			// 8 + 4 + 1 + 4 = 17 bytes
 			sstBytesSize += 17
-
 			// 写入索引块位置 8bytes
 			dataBlockBytes = append(dataBlockBytes, Uint64ToBytes(blockIndexOffset)...)
 			// 写入索引块长度 4bytes
@@ -141,7 +129,6 @@ func write(file *common.SafeFile, sst *entity.SsTable) error {
 			if _, err := file.UnsafeWrite(dataBlockBytes); err != nil {
 				panic(err)
 			}
-
 			// clear block bytes
 			blockKeyOffset = blockKeyOffset[:0]
 			// 如果存在单个数据块大于4kb * 1.5的情况，需要重新分配内存，避免大块内存长期占用
@@ -151,25 +138,61 @@ func write(file *common.SafeFile, sst *entity.SsTable) error {
 				dataBlockBytes = dataBlockBytes[:0]
 			}
 		}
-
+	}
+	blockKeyOffset = nil
+	dataBlockBytes = nil
+	if err := file.Flush(); err != nil {
+		panic(err)
+	}
+	// 索引offset
+	sstIndexOffset := sstBytesSize
+	// 一个索引项的结构是：key长度 + key + offset，其中offset是数据块的最后一个字节的偏移量
+	// 4 + keyByteSize + 8
+	for _, tuple := range sstBlockLastKey {
+		// 写入索引项的key长度
+		sstBytesSize += 4
+		if _, err := file.UnsafeWrite(Uint32ToBytes(uint32(len(tuple.First)))); err != nil {
+			panic(err)
+		}
+		// 写入索引项的key
+		sstBytesSize += uint64(len(tuple.First))
+		if _, err := file.UnsafeWrite(tuple.First); err != nil {
+			panic(err)
+		}
+		// 写入索引项的offset
+		sstBytesSize += 8
+		if _, err := file.UnsafeWrite(Uint64ToBytes(tuple.Second)); err != nil {
+			panic(err)
+		}
+	}
+	sstIndexLen := sstBytesSize - sstIndexOffset
+	// 一个footer的结构是：index block offset + index block length + magic number
+	// 8 + 8 + 4
+	sstBytesSize += 20
+	if _, err := file.UnsafeWrite(Uint64ToBytes(sstIndexOffset)); err != nil {
+		panic(err)
+	}
+	if _, err := file.UnsafeWrite(Uint64ToBytes(sstIndexLen)); err != nil {
+		panic(err)
+	}
+	if _, err := file.UnsafeWrite(Uint32ToBytes(entity.MAGIC_NUMBER)); err != nil {
+		panic(err)
 	}
 	if err := file.Flush(); err != nil {
 		panic(err)
 	}
-	// TODO 写入sst尾部信息
-
-	return nil
+	return sstBytesSize, nil
 }
 
 // 接收一个sst文件写入请求
-func (sm *sstService) SendSstWrite(sst *entity.SsTable) {
-	sm.sstReceiver <- sst
+func (sm *sstService) SendSstWrite(items DataItems) {
+	sm.sstReceiver <- items
 }
 
 // receive sst write request
 func (sm *sstService) receiveSstWrite() {
-	for sst := range sm.sstReceiver {
-		if err := sm.WriteTable(sst); err != nil {
+	for items := range sm.sstReceiver {
+		if err := sm.WriteTable(items); err != nil {
 			panic(err)
 		}
 	}
