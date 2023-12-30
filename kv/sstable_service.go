@@ -210,6 +210,6 @@ func (sm *sstService) Close() error {
 	// wait all sst write done
 	<-sm.done
 	close(sm.done)
-	sm.fileCache.Clear()
+	sm.fileCache.SyncClear()
 	return nil
 }

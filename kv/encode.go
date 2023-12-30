@@ -7,13 +7,6 @@ import (
 	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
-type indexPart struct {
-	keyLen  uint32
-	key     []byte
-	offset  uint64
-	itemLen uint32
-}
-
 func EnCodeNextId(flag uint8, nextId uint64) []byte {
 	b := make([]byte, 9)
 	b[0] = flag

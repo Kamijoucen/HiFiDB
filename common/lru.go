@@ -2,6 +2,7 @@ package common
 
 import (
 	"container/list"
+	"sync"
 )
 
 type entry[K comparable, V any] struct {
@@ -92,6 +93,24 @@ func (l *LRUCache[K, V]) Clear() {
 			entry := e.Value.(*entry[K, V])
 			go l.removeCallBack(entry.key, entry.value)
 		}
+	}
+	l.lru = list.New()
+}
+
+// sync call back clear
+func (l *LRUCache[K, V]) SyncClear() {
+	l.cache = make(map[K]*list.Element)
+	if l.removeCallBack != nil {
+		wg := sync.WaitGroup{}
+		wg.Add(l.lru.Len())
+		for e := l.lru.Front(); e != nil; e = e.Next() {
+			en := e.Value.(*entry[K, V])
+			go func(en *entry[K, V]) {
+				l.removeCallBack(en.key, en.value)
+				wg.Done()
+			}(en)
+		}
+		wg.Wait()
 	}
 	l.lru = list.New()
 }
