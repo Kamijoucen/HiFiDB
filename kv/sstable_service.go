@@ -20,7 +20,7 @@ type DataItems []*entity.DataItem
 // level manager
 type sstService struct {
 	lock        sync.RWMutex
-	fileCache   map[string]*common.SafeFile
+	fileCache   *common.LRUCache[string, common.SafeFile]
 	metaManager *metaService
 	walManager  *walManager
 	sstReceiver chan DataItems
@@ -28,8 +28,11 @@ type sstService struct {
 }
 
 func NewSstService() *sstService {
+	closeFileFunc := func(s string, sf *common.SafeFile) {
+		sf.Close()
+	}
 	sst := &sstService{
-		fileCache:   make(map[string]*common.SafeFile),
+		fileCache:   common.NewLRUCacheWithRemoveCallBack[string, common.SafeFile](100, closeFileFunc),
 		metaManager: NewMetaService(),
 		walManager:  NewWalManager(),
 		sstReceiver: make(chan DataItems, 100),
@@ -55,7 +58,7 @@ func (sm *sstService) WriteTable(dataItems DataItems) error {
 	if err := file.Open(os.O_RDWR | os.O_CREATE | os.O_APPEND); err != nil {
 		return err
 	}
-	sm.fileCache[sstPath] = file
+	sm.fileCache.Put(sstPath, file)
 	if _, err := write(file, dataItems); err != nil {
 		return err
 	}
@@ -207,10 +210,6 @@ func (sm *sstService) Close() error {
 	// wait all sst write done
 	<-sm.done
 	close(sm.done)
-	for _, file := range sm.fileCache {
-		if err := file.Close(); err != nil {
-			return err
-		}
-	}
+	sm.fileCache.Clear()
 	return nil
 }
