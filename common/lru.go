@@ -77,10 +77,10 @@ func (l *LRUCache[K, V]) Remove(key K) {
 }
 
 // all value
-func (l *LRUCache[K, V]) AllValue() []Tuple[K, *V] {
-	var res []Tuple[K, *V]
+func (l *LRUCache[K, V]) AllValue() []*Tuple[K, *V] {
+	var res []*Tuple[K, *V]
 	for e := l.lru.Front(); e != nil; e = e.Next() {
-		res = append(res, Tuple[K, *V]{e.Value.(*entry[K, V]).key, e.Value.(*entry[K, V]).value})
+		res = append(res, &Tuple[K, *V]{e.Value.(*entry[K, V]).key, e.Value.(*entry[K, V]).value})
 	}
 	return res
 }

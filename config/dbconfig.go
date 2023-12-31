@@ -8,12 +8,13 @@ func loadConfigFile() *DBConfig {
 }
 
 type DBConfig struct {
-	DBPath      string
-	DBBlockSize uint64
-	SSTableSize uint64
-	L0Size      uint64
-	L1Size      uint64
-	LevelRatio  uint32
+	DBPath       string
+	MEMTableSize uint64
+	DBBlockSize  uint64
+	SSTableSize  uint64
+	L0Size       uint64
+	L1Size       uint64
+	LevelRatio   uint32
 }
 
 type DBConfigOption func(*DBConfig)
@@ -22,6 +23,13 @@ type DBConfigOption func(*DBConfig)
 func WithDBPath(path string) DBConfigOption {
 	return func(config *DBConfig) {
 		config.DBPath = path
+	}
+}
+
+// memtable size
+func WithMEMTableSize(size uint64) DBConfigOption {
+	return func(config *DBConfig) {
+		config.MEMTableSize = size
 	}
 }
 
@@ -62,12 +70,13 @@ func WithSSTableSize(size uint64) DBConfigOption {
 
 func NewDBConfig(options ...DBConfigOption) *DBConfig {
 	config := &DBConfig{
-		DBPath:      "../tempdb",
-		DBBlockSize: 4 * 1024,         // 4KB
-		SSTableSize: 1 * 1024 * 1024,  // 1MB
-		L0Size:      4 * 1024 * 1024,  // 4MB
-		L1Size:      10 * 1024 * 1024, // 10MB
-		LevelRatio:  10,               // 10:1
+		DBPath:       "../tempdb",
+		MEMTableSize: 32 * 1024 * 1024,  // 32MB
+		DBBlockSize:  32 * 1024,         // 32KB
+		SSTableSize:  2 * 1024 * 1024,   // 2MB
+		L0Size:       10 * 1024 * 1024,  // 10MB
+		L1Size:       100 * 1024 * 1024, // 100MB
+		LevelRatio:   10,                // 10:1
 	}
 	for _, option := range options {
 		option(config)

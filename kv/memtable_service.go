@@ -11,7 +11,7 @@ import (
 type memTableManager struct {
 	lock       sync.RWMutex
 	walManager *walManager
-	sstManager *sstService
+	sstManager *SstService
 	sortTable  common.SortTable[[]byte, *memValue]
 	size       uint64
 }
