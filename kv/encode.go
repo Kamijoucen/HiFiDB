@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 
 	"github.com/kamijoucen/hifidb/common"
-	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
 func EnCodeNextId(flag uint8, nextId uint64) []byte {
@@ -54,11 +53,11 @@ func StrToBytes(s string, len int) []byte {
 	return b
 }
 
-func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) DataItems {
-	items := make([]*entity.DataItem, 0)
+func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) []*DataItem {
+	items := make([]*DataItem, 0)
 	iter := memTable.Iter()
 	for iter.Next() {
-		items = append(items, &entity.DataItem{Key: iter.Key(), Value: iter.Value().Value})
+		items = append(items, &DataItem{Key: iter.Key(), Value: iter.Value().Value})
 	}
 	return items
 }

@@ -45,7 +45,7 @@ func (m *memTableManager) Add(key []byte, value []byte) error {
 		return err
 	}
 	// check memTable size
-	if m.size >= config.GlobalConfig.SSTableSize {
+	if m.size >= config.GlobalConfig.MEMTableSize {
 		m.flush()
 	}
 	return nil
@@ -83,5 +83,8 @@ func (m *memTableManager) flush() {
 	tempSt := m.sortTable
 	m.sortTable = NewBSTTable()
 	m.size = 0
-	m.sstManager.SendSstWrite(MemTableToSSTable(tempSt))
+	data := MemTableToSSTable(tempSt)
+	for _, item := range data {
+		m.sstManager.WriteData(item)
+	}
 }
