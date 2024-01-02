@@ -64,23 +64,14 @@ func (sf *SafeFile) Write(b []byte) (n int, err error) {
 }
 
 func (sf *SafeFile) UnsafeReadAt(b []byte, off int64) (n int, err error) {
-	if sf.state != OPEN {
-		return 0, errors.New("file not open")
-	}
 	return sf.f.ReadAt(b, off)
 }
 
 func (sf *SafeFile) UnsafeRead(b []byte) (n int, err error) {
-	if sf.state != OPEN {
-		return 0, errors.New("file not open")
-	}
 	return sf.f.Read(b)
 }
 
 func (sf *SafeFile) UnsafeWrite(b []byte) (n int, err error) {
-	if sf.state != OPEN {
-		return 0, errors.New("file not open")
-	}
 	return sf.buf.Write(b)
 }
 

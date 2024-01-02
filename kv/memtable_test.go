@@ -3,32 +3,40 @@ package kv
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
-// test
-func TestMemTable(t *testing.T) {
-	m := NewMemTable()
-	for i := 0; i < 1000000; i++ {
-		m.Add([]byte("key1"), []byte("value1"))
-	}
-	// wait 10s
-	time.Sleep(10 * time.Second)
-}
-
 // bst test
 func TestBSTTable(t *testing.T) {
 	m := NewBSTTable()
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		m.Add(Uint32ToBytes(uint32(i)), &memValue{entity.NORMAL_VALUE, []byte("value1")})
 	}
 	// iter
 	iter := m.Iter()
-	for iter.Next() {
+	for iter.HasNext() {
+		value := iter.Next()
 		// fmt print value convert string
-		fmt.Println(BytesToUint32(iter.Key()), string(iter.Value().Value))
+		fmt.Println(BytesToUint32(value.First), string(value.Second.Value))
+	}
+}
+
+func TestBSTTable2(t *testing.T) {
+	m := NewBSTTable()
+	m.Add(Uint32ToBytes(1), &memValue{entity.NORMAL_VALUE, []byte("value1")})
+	m.Add(Uint32ToBytes(3), &memValue{entity.NORMAL_VALUE, []byte("value1")})
+	m.Add(Uint32ToBytes(2), &memValue{entity.NORMAL_VALUE, []byte("value1")})
+	m.Add(Uint32ToBytes(9), &memValue{entity.NORMAL_VALUE, []byte("value1")})
+	m.Add(Uint32ToBytes(6), &memValue{entity.NORMAL_VALUE, []byte("value1")})
+	m.Add(Uint32ToBytes(4), &memValue{entity.NORMAL_VALUE, []byte("value1")})
+	m.Add(Uint32ToBytes(7), &memValue{entity.NORMAL_VALUE, []byte("value1")})
+	// iter
+	iter := m.Iter()
+	for iter.HasNext() {
+		value := iter.Next()
+		// fmt print value convert string
+		fmt.Println(BytesToUint32(value.First), string(value.Second.Value))
 	}
 }
 
@@ -36,7 +44,7 @@ func TestBSTTable(t *testing.T) {
 func TestMemTableManager(t *testing.T) {
 	m := NewMemTable()
 	for i := 0; i < 100000; i++ {
-		m.Add(Uint32ToBytes(uint32(i)), []byte("电视机分厘卡就杀了房间阿里山房间里电视机分厘卡就杀了房间阿里山房间里电视机分厘卡就杀了房间阿里山房间里电视机分厘卡就杀了房间阿里山房间里电视机分厘卡就杀了房间阿里山房间里电视机分厘卡就杀了房间阿里山房间里电视机分厘卡就杀了房间阿里山房间里电视机分厘卡就杀了房间阿里山房间里"))
+		m.Add(Uint32ToBytes(uint32(i)), []byte("lisicen"))
 	}
 	m.Close()
 }

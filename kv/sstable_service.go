@@ -122,7 +122,7 @@ func (sm *SstService) flushDataBlock() error {
 
 // flush sst
 func (sm *SstService) flushSst() error {
-	if len(sm.currentSstState.blockBytes) == 0 {
+	if sm.currentSstState.sstBytesSize == 0 {
 		return nil
 	}
 	file := sm.currentSstState.sstFile
@@ -217,7 +217,7 @@ func (sm *SstService) resetNextSstFile() error {
 	currentSstState.sstFile = file
 	currentSstState.sstBlockLastKey = make([]*tuple, 0)
 	currentSstState.blockItemOffset = make([]uint64, 0)
-	currentSstState.blockBytes = make([]byte, config.GlobalConfig.DBBlockSize)
+	currentSstState.blockBytes = make([]byte, 0, config.GlobalConfig.DBBlockSize)
 	sm.currentSstState = currentSstState
 	return nil
 }

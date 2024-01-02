@@ -56,8 +56,10 @@ func StrToBytes(s string, len int) []byte {
 func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) []*DataItem {
 	items := make([]*DataItem, 0)
 	iter := memTable.Iter()
-	for iter.Next() {
-		items = append(items, &DataItem{Key: iter.Key(), Value: iter.Value().Value})
+	for iter.HasNext() {
+		value := iter.Next()
+		// TODO value type 没有写入
+		items = append(items, &DataItem{Key: value.First, Value: value.Second.Value})
 	}
 	return items
 }

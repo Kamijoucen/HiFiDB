@@ -1,9 +1,9 @@
 package common
 
 // iterator
-type Iterator[K any, V any] interface {
-	Next() bool
-	Key() K
+type Iterator[V any] interface {
+	HasNext() bool
+	Next() V
 	Value() V
 }
 
@@ -13,5 +13,5 @@ type SortTable[K any, V any] interface {
 	Get(key K) (V, error)
 	Update(key K, value V) error
 	Remove(key K) error
-	Iter() Iterator[K, V]
+	Iter() Iterator[*Tuple[K, V]]
 }

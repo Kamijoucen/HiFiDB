@@ -20,12 +20,8 @@ type bstNode struct {
 	value *memValue
 	left  *bstNode
 	right *bstNode
-}
-
-type bstIterator struct {
-	current   *bstNode
-	sortTable *bstTable
-	stack     []*bstNode
+	next  *bstNode
+	prev  *bstNode
 }
 
 // NewBSTTable 创建一个新的二分查找树。
@@ -35,7 +31,7 @@ func NewBSTTable() *bstTable {
 
 // Add 将一个新的键值对添加到二分查找树中。
 func (bst *bstTable) Add(key []byte, value *memValue) error {
-	newNode := &bstNode{key, value, nil, nil}
+	newNode := &bstNode{key, value, nil, nil, nil, nil}
 	if bst.root == nil {
 		bst.root = newNode
 	} else {
@@ -45,12 +41,24 @@ func (bst *bstTable) Add(key []byte, value *memValue) error {
 			if r < 0 {
 				if node.left == nil {
 					node.left = newNode
+					if node.prev != nil {
+						node.prev.next = newNode
+						newNode.prev = node.prev
+					}
+					newNode.next = node
+					node.prev = newNode
 					break
 				}
 				node = node.left
 			} else if r > 0 {
 				if node.right == nil {
 					node.right = newNode
+					if node.next != nil {
+						node.next.prev = newNode
+						newNode.next = node.next
+					}
+					newNode.prev = node
+					node.next = newNode
 					break
 				}
 				node = node.right
@@ -124,36 +132,49 @@ func (bst *bstTable) Len() uint32 {
 	return bst.len
 }
 
-// Iter
-func (bst *bstTable) Iter() common.Iterator[[]byte, *memValue] {
-	iter := &bstIterator{nil, bst, make([]*bstNode, 0)}
-	node := bst.root
-	for node != nil {
-		iter.stack = append(iter.stack, node)
-		node = node.left
-	}
-	return iter
+type bstIterator struct {
+	current   *bstNode
+	sortTable *bstTable
 }
 
-func (iter *bstIterator) Next() bool {
-	if len(iter.stack) == 0 {
+// Iter
+func (bst *bstTable) Iter() common.Iterator[*common.Tuple[[]byte, *memValue]] {
+	firstNode := bst.root
+	if firstNode == nil {
+		return &bstIterator{nil, bst}
+	}
+	for firstNode.left != nil {
+		firstNode = firstNode.left
+	}
+	begin := &bstNode{}
+	begin.next = firstNode
+	return &bstIterator{begin, bst}
+}
+
+func (iter *bstIterator) Next() *common.Tuple[[]byte, *memValue] {
+	if iter.current == nil {
+		return nil
+	}
+	if iter.current.next != nil {
+		iter.current = iter.current.next
+		return iter.Value()
+	} else {
+		iter.current = nil
+		return nil
+	}
+}
+
+// has next
+func (iter *bstIterator) HasNext() bool {
+	if iter.current == nil {
 		return false
 	}
-	iter.current = iter.stack[len(iter.stack)-1]
-	iter.stack = iter.stack[:len(iter.stack)-1]
+	return iter.current.next != nil
+}
 
-	node := iter.current.right
-	for node != nil {
-		iter.stack = append(iter.stack, node)
-		node = node.left
+func (iter *bstIterator) Value() *common.Tuple[[]byte, *memValue] {
+	if iter.current == nil {
+		return nil
 	}
-	return true
-}
-
-func (iter *bstIterator) Key() []byte {
-	return iter.current.key
-}
-
-func (iter *bstIterator) Value() *memValue {
-	return iter.current.value
+	return &common.Tuple[[]byte, *memValue]{First: iter.current.key, Second: iter.current.value}
 }
