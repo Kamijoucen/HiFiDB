@@ -40,11 +40,18 @@ func TestBSTTable2(t *testing.T) {
 	}
 }
 
+func BenchmarkAddTest(b *testing.B) {
+	m := NewBSTTable()
+	for i := 0; i < b.N; i++ {
+		m.Add(Uint32ToBytes(uint32(i)), &memValue{entity.NORMAL_VALUE, []byte("value1")})
+	}
+}
+
 // mamManager test
 func TestMemTableManager(t *testing.T) {
 	m := NewMemTable()
-	for i := 0; i < 100000; i++ {
-		m.Add(Uint32ToBytes(uint32(i)), []byte("lisicen"))
+	for i := 0; i < 10000; i++ {
+		m.Add(Uint32ToBytes(uint32(i)), []byte("lisicenjj"))
 	}
 	m.Close()
 }

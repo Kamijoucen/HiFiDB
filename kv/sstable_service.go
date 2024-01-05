@@ -22,7 +22,7 @@ type SstService struct {
 	lock        sync.RWMutex
 	fileCache   *common.LRUCache[string, common.SafeFile]
 	metaManager *metaService
-	walManager  *walManager
+	walManager  *WalManager
 	// sstReceiver     chan DataItems
 	// done            chan bool
 	currentSstState *currentSstState
@@ -200,6 +200,9 @@ func (sm *SstService) resetSstBlock() {
 }
 
 func (sm *SstService) resetNextSstFile() error {
+	if sm.currentSstState != nil {
+		_ = sm.currentSstState.sstFile.Close()
+	}
 	nId, err := sm.metaManager.NextSstId()
 	if err != nil {
 		return err
