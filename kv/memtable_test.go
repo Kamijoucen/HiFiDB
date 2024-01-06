@@ -2,6 +2,7 @@ package kv
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/kamijoucen/hifidb/kv/entity"
@@ -50,8 +51,10 @@ func BenchmarkAddTest(b *testing.B) {
 // mamManager test
 func TestMemTableManager(t *testing.T) {
 	m := NewMemTable()
-	for i := 0; i < 100000; i++ {
-		m.Add(Uint32ToBytes(uint32(i)), []byte("lisicenjj"))
+	for i := 0; i < 10; i++ {
+		// int to string
+		s := strconv.Itoa(i)
+		m.Add([]byte(s), []byte("lisicenjj"))
 	}
 	m.Close()
 }

@@ -67,14 +67,15 @@ func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) []*DataItem
 
 // sst meta to bytes
 func SSTMetaToBytes(meta *entity.SSTMeta) []byte {
-	// sst file id + level + min key size + max key size + min key + max key
-	byteLen := 8 + 8 + 4 + 4 + len(meta.Range.MinKey) + len(meta.Range.MaxKey)
+	// flag + sst file id + level + min key size + min key + max key size + max key
+	byteLen := 1 + 8 + 8 + 4 + 4 + len(meta.Range.MinKey) + len(meta.Range.MaxKey)
 	b := make([]byte, byteLen)
-	binary.BigEndian.PutUint64(b, meta.FileId)
-	binary.BigEndian.PutUint64(b[8:], meta.Level)
-	binary.BigEndian.PutUint32(b[16:], uint32(len(meta.Range.MinKey)))
-	binary.BigEndian.PutUint32(b[20:], uint32(len(meta.Range.MaxKey)))
-	copy(b[24:], meta.Range.MinKey)
-	copy(b[24+len(meta.Range.MinKey):], meta.Range.MaxKey)
+	b[0] = entity.SST_META_NODE
+	binary.BigEndian.PutUint64(b[1:], meta.FileId)
+	binary.BigEndian.PutUint64(b[9:], meta.Level)
+	binary.BigEndian.PutUint32(b[17:], uint32(len(meta.Range.MinKey)))
+	copy(b[21:], meta.Range.MinKey)
+	binary.BigEndian.PutUint32(b[21+len(meta.Range.MinKey):], uint32(len(meta.Range.MaxKey)))
+	copy(b[25+len(meta.Range.MinKey):], meta.Range.MaxKey)
 	return b
 }

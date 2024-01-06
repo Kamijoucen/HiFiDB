@@ -1,5 +1,7 @@
 package entity
 
+import "strconv"
+
 const (
 	SST_FILE_NEXT_ID  = "sst_file_next_id"
 	META_FILE_NEXT_ID = "meta_file_next_id"
@@ -25,4 +27,14 @@ type SSTMeta struct {
 type RangePair struct {
 	MinKey []byte // SST文件的最小key
 	MaxKey []byte // SST文件的最大key
+}
+
+// meta toString
+func (sm *SSTMeta) String() string {
+	return "SSTMeta{" + "FileId=" + strconv.FormatUint(sm.FileId, 10) + ", Level=" + strconv.FormatUint(sm.Level, 10) + ", Range=" + sm.Range.String() + "}"
+}
+
+// range toString
+func (rp *RangePair) String() string {
+	return "RangePair{" + "MinKey=" + string(rp.MinKey) + ", MaxKey=" + string(rp.MaxKey) + "}"
 }
