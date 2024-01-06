@@ -85,6 +85,11 @@ func (sf *SafeFile) Flush() error {
 	return sf.buf.Flush()
 }
 
+// unsafe flush
+func (sf *SafeFile) UnsafeFlush() error {
+	return sf.buf.Flush()
+}
+
 func (sf *SafeFile) Close() error {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
@@ -105,4 +110,15 @@ func (sf *SafeFile) IsExist() bool {
 		return true
 	}
 	return false
+}
+
+// write bytes
+func WriteBytesAndFlush(f *SafeFile, b []byte) error {
+	if _, err := f.UnsafeWrite(b); err != nil {
+		return err
+	}
+	if err := f.UnsafeFlush(); err != nil {
+		return err
+	}
+	return nil
 }

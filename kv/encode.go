@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 
 	"github.com/kamijoucen/hifidb/common"
+	"github.com/kamijoucen/hifidb/kv/entity"
 )
 
 func EnCodeNextId(flag uint8, nextId uint64) []byte {
@@ -62,4 +63,18 @@ func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) []*DataItem
 		items = append(items, &DataItem{Key: value.First, Value: value.Second.Value})
 	}
 	return items
+}
+
+// sst meta to bytes
+func SSTMetaToBytes(meta *entity.SSTMeta) []byte {
+	// sst file id + level + min key size + max key size + min key + max key
+	byteLen := 8 + 8 + 4 + 4 + len(meta.Range.MinKey) + len(meta.Range.MaxKey)
+	b := make([]byte, byteLen)
+	binary.BigEndian.PutUint64(b, meta.FileId)
+	binary.BigEndian.PutUint64(b[8:], meta.Level)
+	binary.BigEndian.PutUint32(b[16:], uint32(len(meta.Range.MinKey)))
+	binary.BigEndian.PutUint32(b[20:], uint32(len(meta.Range.MaxKey)))
+	copy(b[24:], meta.Range.MinKey)
+	copy(b[24+len(meta.Range.MinKey):], meta.Range.MaxKey)
+	return b
 }

@@ -21,7 +21,7 @@ type DataItem entity.DataItem
 type SstService struct {
 	lock        sync.RWMutex
 	fileCache   *common.LRUCache[string, common.SafeFile]
-	metaManager *metaService
+	metaManager *MetaService
 	walManager  *WalManager
 	// sstReceiver     chan DataItems
 	// done            chan bool
@@ -29,6 +29,7 @@ type SstService struct {
 }
 
 type currentSstState struct {
+	id               uint64
 	sstBytesSize     uint64
 	currentBlockSize uint64
 	sstFile          *common.SafeFile
@@ -36,6 +37,8 @@ type currentSstState struct {
 	blockItemOffset  []uint64  // 数据块中每个key的offset
 	blockBytes       []byte    // 数据块
 	blockLastItem    *DataItem // 数据块中最后一个item
+	sstBeginKey      []byte    // sst文件的起始key
+	sstEndKey        []byte    // sst文件的结束key
 }
 
 func NewSstService() *SstService {
@@ -65,7 +68,6 @@ func (sm *SstService) WriteData(item *DataItem) {
 		if err := sm.flushDataBlock(); err != nil {
 			panic(err)
 		}
-		sm.resetSstBlock()
 	}
 	if sm.currentSstState.sstBytesSize >= config.GlobalConfig.SSTableSize {
 		if err := sm.flushSst(); err != nil {
@@ -116,7 +118,12 @@ func (sm *SstService) flushDataBlock() error {
 	if err := sm.currentSstState.sstFile.Flush(); err != nil {
 		panic(err)
 	}
-	sm.resetSstBlock()
+	sm.currentSstState.currentBlockSize = 0
+	sm.currentSstState.blockItemOffset = sm.currentSstState.blockItemOffset[:0]
+	sm.currentSstState.blockBytes = sm.currentSstState.blockBytes[:0]
+	sm.currentSstState.blockLastItem = nil
+
+	sm.currentSstState.sstEndKey = blockLastItem.Key
 	return nil
 }
 
@@ -163,6 +170,17 @@ func (sm *SstService) flushSst() error {
 	if err := file.Flush(); err != nil {
 		panic(err)
 	}
+
+	// write sst meta
+	sstMeta := &entity.SSTMeta{
+		FileId: sm.currentSstState.id,
+		Level:  0,
+		Range: entity.RangePair{
+			MinKey: sm.currentSstState.sstBeginKey,
+			MaxKey: sm.currentSstState.sstEndKey,
+		},
+	}
+	_ = sm.metaManager.WriteSstMeta(sstMeta)
 	return nil
 }
 
@@ -190,13 +208,9 @@ func (sm *SstService) writeItem(item *DataItem) {
 	sm.currentSstState.currentBlockSize += uint64(valueByteSize)
 	blockBytes = append(blockBytes, item.Value...)
 	sm.currentSstState.blockBytes = blockBytes
-}
-
-func (sm *SstService) resetSstBlock() {
-	sm.currentSstState.currentBlockSize = 0
-	sm.currentSstState.blockItemOffset = sm.currentSstState.blockItemOffset[:0]
-	sm.currentSstState.blockBytes = sm.currentSstState.blockBytes[:0]
-	sm.currentSstState.blockLastItem = nil
+	if sm.currentSstState.sstBeginKey == nil {
+		sm.currentSstState.sstBeginKey = item.Key
+	}
 }
 
 func (sm *SstService) resetNextSstFile() error {
@@ -215,12 +229,15 @@ func (sm *SstService) resetNextSstFile() error {
 	sm.fileCache.Put(sstPath, file)
 
 	currentSstState := &currentSstState{}
+	currentSstState.id = nId
 	currentSstState.sstBytesSize = 0
 	currentSstState.currentBlockSize = 0
 	currentSstState.sstFile = file
 	currentSstState.sstBlockLastKey = make([]*tuple, 0)
 	currentSstState.blockItemOffset = make([]uint64, 0)
 	currentSstState.blockBytes = make([]byte, 0, config.GlobalConfig.DBBlockSize)
+	currentSstState.blockLastItem = nil
+	currentSstState.sstBeginKey = nil
 	sm.currentSstState = currentSstState
 	return nil
 }
