@@ -70,15 +70,13 @@ func WithSSTableSize(size uint64) DBConfigOption {
 
 func NewDBConfig(options ...DBConfigOption) *DBConfig {
 	config := &DBConfig{
-		DBPath: "../tempdb",
-		// MEMTableSize: 32 * 1024 * 1024, // 32MB
-		MEMTableSize: 1 * 1024 * 1024,
-		DBBlockSize:  32 * 1024, // 32KB
-		// SSTableSize:  2 * 1024 * 1024,   // 2MB
-		SSTableSize: 1 * 1024 * 1024,
-		L0Size:      10 * 1024 * 1024,  // 10MB
-		L1Size:      100 * 1024 * 1024, // 100MB
-		LevelRatio:  10,                // 10:1
+		DBPath:       "../tempdb",
+		MEMTableSize: 32 * 1024 * 1024,  // 32MB
+		DBBlockSize:  32 * 1024,         // 32KB
+		SSTableSize:  2 * 1024 * 1024,   // 2MB
+		L0Size:       10 * 1024 * 1024,  // 10MB
+		L1Size:       100 * 1024 * 1024, // 100MB
+		LevelRatio:   10,                // 10:1
 	}
 	for _, option := range options {
 		option(config)

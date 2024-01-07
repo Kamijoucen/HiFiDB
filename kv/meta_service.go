@@ -1,7 +1,6 @@
 package kv
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -176,8 +175,6 @@ func (mm *MetaService) loadSstMeta() error {
 	}
 	sstMeta.Range.MaxKey = maxKey
 	mm.sstMetaFileCache.Put(sstMeta.FileId, sstMeta)
-	// TODO debug print meta
-	fmt.Println(sstMeta.String())
 	return nil
 }
 

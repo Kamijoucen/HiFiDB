@@ -11,7 +11,7 @@ import (
 // bst test
 func TestBSTTable(t *testing.T) {
 	m := NewBSTTable()
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1000; i++ {
 		m.Add(Uint32ToBytes(uint32(i)), &memValue{entity.NORMAL_VALUE, []byte("value1")})
 	}
 	// iter
@@ -48,13 +48,22 @@ func BenchmarkAddTest(b *testing.B) {
 	}
 }
 
+func BenchmarkMemTableManager(b *testing.B) {
+	m := NewMemTable()
+	for i := 0; i < b.N; i++ {
+		s := strconv.Itoa(i)
+		m.Add([]byte(s), []byte("路上看见法拉是否"))
+	}
+	m.Close()
+}
+
 // mamManager test
 func TestMemTableManager(t *testing.T) {
 	m := NewMemTable()
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		// int to string
 		s := strconv.Itoa(i)
-		m.Add([]byte(s), []byte("lisicenjj"))
+		m.Add([]byte(s), []byte("路上看见法拉是否"))
 	}
 	m.Close()
 }

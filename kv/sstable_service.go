@@ -62,7 +62,7 @@ func (sm *SstService) WriteData(item *DataItem) {
 			panic(err)
 		}
 	}
-	sm.writeItem(item)
+	sm.appendItem(item)
 	sm.currentSstState.blockLastItem = item
 	if sm.currentSstState.currentBlockSize >= config.GlobalConfig.DBBlockSize {
 		if err := sm.flushDataBlock(); err != nil {
@@ -185,7 +185,7 @@ func (sm *SstService) flushSst() error {
 }
 
 // write memTable to sst
-func (sm *SstService) writeItem(item *DataItem) {
+func (sm *SstService) appendItem(item *DataItem) {
 	blockBytes := sm.currentSstState.blockBytes
 	// 数据块中当前item的offset，指向key的起始
 	sm.currentSstState.blockItemOffset = append(sm.currentSstState.blockItemOffset, sm.currentSstState.sstBytesSize)
@@ -238,6 +238,7 @@ func (sm *SstService) resetNextSstFile() error {
 	currentSstState.blockBytes = make([]byte, 0, config.GlobalConfig.DBBlockSize)
 	currentSstState.blockLastItem = nil
 	currentSstState.sstBeginKey = nil
+	currentSstState.sstEndKey = nil
 	sm.currentSstState = currentSstState
 	return nil
 }
