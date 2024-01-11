@@ -17,7 +17,7 @@ type bstTable struct {
 // bstNode 二分查找树的节点。
 type bstNode struct {
 	key   []byte
-	value *memValue
+	value *MemValue
 	left  *bstNode
 	right *bstNode
 	next  *bstNode
@@ -30,7 +30,7 @@ func NewBSTTable() *bstTable {
 }
 
 // Add 将一个新的键值对添加到二分查找树中。
-func (bst *bstTable) Add(key []byte, value *memValue) error {
+func (bst *bstTable) Add(key []byte, value *MemValue) error {
 	newNode := &bstNode{key, value, nil, nil, nil, nil}
 	if bst.root == nil {
 		bst.root = newNode
@@ -73,7 +73,7 @@ func (bst *bstTable) Add(key []byte, value *memValue) error {
 }
 
 // Update TODO 是否要在这里写入delete flag
-func (bst *bstTable) Update(key []byte, value *memValue) error {
+func (bst *bstTable) Update(key []byte, value *MemValue) error {
 	if bst.root == nil {
 		return errors.New("bst is empty")
 	}
@@ -100,11 +100,11 @@ func (bst *bstTable) Update(key []byte, value *memValue) error {
 
 // Remove
 func (bst *bstTable) Remove(key []byte) error {
-	return bst.Add(key, &memValue{entity.DELETE_VALUE, nil})
+	return bst.Add(key, &MemValue{entity.DELETE_VALUE, nil})
 }
 
 // Get
-func (bst *bstTable) Get(key []byte) (*memValue, error) {
+func (bst *bstTable) Get(key []byte) (*MemValue, error) {
 	if bst.root == nil {
 		return nil, errors.New("bst is empty")
 	}
@@ -138,7 +138,7 @@ type bstIterator struct {
 }
 
 // Iter
-func (bst *bstTable) Iter() common.Iterator[*common.Tuple[[]byte, *memValue]] {
+func (bst *bstTable) Iter() common.Iterator[*common.Tuple[[]byte, *MemValue]] {
 	firstNode := bst.root
 	if firstNode == nil {
 		return &bstIterator{nil, bst}
@@ -151,7 +151,7 @@ func (bst *bstTable) Iter() common.Iterator[*common.Tuple[[]byte, *memValue]] {
 	return &bstIterator{begin, bst}
 }
 
-func (iter *bstIterator) Next() *common.Tuple[[]byte, *memValue] {
+func (iter *bstIterator) Next() *common.Tuple[[]byte, *MemValue] {
 	if iter.current == nil {
 		return nil
 	}
@@ -172,9 +172,9 @@ func (iter *bstIterator) HasNext() bool {
 	return iter.current.next != nil
 }
 
-func (iter *bstIterator) Value() *common.Tuple[[]byte, *memValue] {
+func (iter *bstIterator) Value() *common.Tuple[[]byte, *MemValue] {
 	if iter.current == nil {
 		return nil
 	}
-	return &common.Tuple[[]byte, *memValue]{First: iter.current.key, Second: iter.current.value}
+	return &common.Tuple[[]byte, *MemValue]{First: iter.current.key, Second: iter.current.value}
 }

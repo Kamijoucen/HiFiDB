@@ -1,15 +1,15 @@
 package kv
 
-type WalManager struct {
+type WalService struct {
 }
 
 // new
-func NewWalManager() *WalManager {
-	return &WalManager{}
+func NewWalService() *WalService {
+	return &WalService{}
 }
 
 // write
-func (wl *WalManager) Write(key string, value []byte) error {
+func (wl *WalService) Write(key string, value []byte) error {
 	// TODO
 	return nil
 }

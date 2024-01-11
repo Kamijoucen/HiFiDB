@@ -23,7 +23,7 @@ func (client *KVClient) BatchGet(keys [][]byte) ([][]byte, error) {
 	panic("not implemented") // TODO: Implement
 }
 
-func (client *KVClient) BatchPut(keys [][]byte, values [][]byte) error {
+func (client *KVClient) BatchPut(keys, values [][]byte) error {
 	panic("not implemented") // TODO: Implement
 }
 
@@ -31,9 +31,6 @@ func (client *KVClient) BatchDelete(keys [][]byte) error {
 	panic("not implemented") // TODO: Implement
 }
 
-// Range(beginKey []byte, endKey []byte) (Iterator, error)
-// Prefix(prefix []byte) (Iterator, error)
-// BatchRange(beginKey []byte, endKey []byte) (Iterator, error)
 func (client *KVClient) Close() error {
 	panic("not implemented") // TODO: Implement
 }

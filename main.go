@@ -1,9 +1,12 @@
 package main
 
-import (
-	"fmt"
-)
+import "github.com/kamijoucen/hifidb/kv"
 
 func main() {
-	fmt.Println("hello " + "world")
+
+	lsm := kv.NewLsmManager()
+
+	lsm.Add([]byte("a"), []byte("1"))
+	lsm.Add([]byte("b"), []byte("2"))
+
 }

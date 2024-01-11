@@ -54,7 +54,7 @@ func StrToBytes(s string, len int) []byte {
 	return b
 }
 
-func MemTableToSSTable(memTable common.SortTable[[]byte, *memValue]) []*DataItem {
+func MemTableToSSTable(memTable common.SortTable[[]byte, *MemValue]) []*DataItem {
 	items := make([]*DataItem, 0)
 	iter := memTable.Iter()
 	for iter.HasNext() {

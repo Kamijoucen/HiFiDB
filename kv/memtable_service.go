@@ -10,25 +10,25 @@ import (
 
 type MemTableService struct {
 	lock       sync.RWMutex
-	walManager *WalManager
-	sstManager *SstService
-	sortTable  common.SortTable[[]byte, *memValue]
+	walService *WalService
+	sstService *SstService
+	sortTable  common.SortTable[[]byte, *MemValue]
 	size       uint64
-	memChannel chan common.SortTable[[]byte, *memValue]
+	memChannel chan common.SortTable[[]byte, *MemValue]
 	done       chan bool
 }
-type memValue struct {
+type MemValue struct {
 	ValueType uint8
 	Value     []byte
 }
 
-func NewMemTable() *MemTableService {
+func NewMemTable(ws *WalService, ss *SstService) *MemTableService {
 	mem := &MemTableService{
+		walService: ws,
+		sstService: ss,
 		sortTable:  NewBSTTable(),
-		walManager: NewWalManager(),
-		sstManager: NewSstService(),
 		size:       0,
-		memChannel: make(chan common.SortTable[[]byte, *memValue], 1),
+		memChannel: make(chan common.SortTable[[]byte, *MemValue], 1),
 		done:       make(chan bool, 1),
 	}
 	go mem.receiverMem()
@@ -46,7 +46,7 @@ func (s *MemTableService) receiverMem() {
 	for table := range s.memChannel {
 		data := MemTableToSSTable(table)
 		for _, item := range data {
-			s.sstManager.WriteData(item)
+			s.sstService.WriteData(item)
 		}
 	}
 	s.done <- true
@@ -58,7 +58,7 @@ func (s *MemTableService) receiverMem() {
 func (m *MemTableService) Add(key, value []byte) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	val := &memValue{entity.NORMAL_VALUE, value}
+	val := &MemValue{entity.NORMAL_VALUE, value}
 	// item size
 	m.size += memItemSize(key, val)
 
@@ -73,20 +73,30 @@ func (m *MemTableService) Add(key, value []byte) error {
 }
 
 func (m *MemTableService) Update(key, value []byte) error {
-	return nil
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return m.sortTable.Update(key, &MemValue{entity.NORMAL_VALUE, value})
 }
 
 // delete
 func (m *MemTableService) Delete(key []byte) ([]byte, error) {
-	return nil, nil
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return nil, m.sortTable.Remove(key)
 }
 
 // get
-func (m *MemTableService) Get() ([]byte, error) {
-	return nil, nil
+func (m *MemTableService) Get(key []byte) (*MemValue, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	mv, err := m.sortTable.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return mv, nil
 }
 
-func memItemSize(key []byte, val *memValue) uint64 {
+func memItemSize(key []byte, val *MemValue) uint64 {
 	// key + value + 1
 	return uint64(len(key)) + 1 + uint64(len(val.Value))
 }
@@ -98,5 +108,5 @@ func (m *MemTableService) Close() {
 	m.restSortTable()
 	close(m.memChannel)
 	<-m.done
-	m.sstManager.Close()
+	m.sstService.Close()
 }

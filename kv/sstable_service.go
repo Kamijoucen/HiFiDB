@@ -21,8 +21,8 @@ type DataItem entity.DataItem
 type SstService struct {
 	lock        sync.RWMutex
 	fileCache   *common.LRUCache[string, common.SafeFile]
-	metaManager *MetaService
-	walManager  *WalManager
+	metaService *MetaService
+	walService  *WalService
 	// sstReceiver     chan DataItems
 	// done            chan bool
 	currentSstState *currentSstState
@@ -41,14 +41,14 @@ type currentSstState struct {
 	sstEndKey        []byte    // sst文件的结束key
 }
 
-func NewSstService() *SstService {
+func NewSstService(ms *MetaService, ws *WalService) *SstService {
 	closeFileFunc := func(s string, sf *common.SafeFile) {
 		sf.Close()
 	}
 	sst := &SstService{
 		fileCache:   common.NewLRUCacheWithRemoveCallBack[string, common.SafeFile](100, closeFileFunc),
-		metaManager: NewMetaService(),
-		walManager:  NewWalManager(),
+		metaService: ms,
+		walService:  ws,
 		// sstReceiver: make(chan DataItems, 100),
 		// done:        make(chan bool, 1),
 	}
@@ -115,7 +115,7 @@ func (sm *SstService) flushDataBlock() error {
 		panic(err)
 	}
 	// flush
-	if err := sm.currentSstState.sstFile.Flush(); err != nil {
+	if err := sm.currentSstState.sstFile.UnsafeFlush(); err != nil {
 		panic(err)
 	}
 	sm.currentSstState.currentBlockSize = 0
@@ -167,7 +167,7 @@ func (sm *SstService) flushSst() error {
 	if _, err := file.UnsafeWrite(Uint32ToBytes(entity.MAGIC_NUMBER)); err != nil {
 		panic(err)
 	}
-	if err := file.Flush(); err != nil {
+	if err := file.UnsafeFlush(); err != nil {
 		panic(err)
 	}
 
@@ -180,7 +180,7 @@ func (sm *SstService) flushSst() error {
 			MaxKey: sm.currentSstState.sstEndKey,
 		},
 	}
-	_ = sm.metaManager.WriteSstMeta(sstMeta)
+	_ = sm.metaService.WriteSstMeta(sstMeta)
 	return nil
 }
 
@@ -217,7 +217,7 @@ func (sm *SstService) resetNextSstFile() error {
 	if sm.currentSstState != nil {
 		_ = sm.currentSstState.sstFile.Close()
 	}
-	nId, err := sm.metaManager.NextSstId()
+	nId, err := sm.metaService.NextSstId()
 	if err != nil {
 		return err
 	}

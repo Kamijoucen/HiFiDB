@@ -5,7 +5,7 @@ type KV interface {
 	Put(key []byte, value []byte) error
 	Delete(key []byte) error
 	BatchGet(keys [][]byte) ([][]byte, error)
-	BatchPut(keys [][]byte, values [][]byte) error
+	BatchPut(keys, values [][]byte) error
 	BatchDelete(keys [][]byte) error
 	// Range(beginKey []byte, endKey []byte) (Iterator, error)
 	// Prefix(prefix []byte) (Iterator, error)
