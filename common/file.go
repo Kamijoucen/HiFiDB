@@ -15,7 +15,7 @@ const (
 )
 
 type SafeFile struct {
-	lock  sync.RWMutex
+	lock  *sync.RWMutex
 	path  string
 	state uint8
 	f     *os.File
@@ -26,7 +26,21 @@ func NewSafeFile(path string) *SafeFile {
 	return &SafeFile{
 		path:  path,
 		state: NONE,
+		lock:  &sync.RWMutex{},
 	}
+}
+
+func NewSafeFileWithLock(path string, hasLock bool) *SafeFile {
+	file := &SafeFile{
+		path:  path,
+		state: NONE,
+	}
+	if hasLock {
+		file.lock = &sync.RWMutex{}
+	} else {
+		file.lock = nil
+	}
+	return file
 }
 
 func (sf *SafeFile) Open(flag int) error {
@@ -61,6 +75,18 @@ func (sf *SafeFile) Write(b []byte) (n int, err error) {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
 	return sf.buf.Write(b)
+}
+
+// seek
+func (sf *SafeFile) Seek(offset int64, whence int) (int64, error) {
+	sf.lock.Lock()
+	defer sf.lock.Unlock()
+	return sf.f.Seek(offset, whence)
+}
+
+// unsafe seek
+func (sf *SafeFile) UnsafeSeek(offset int64, whence int) (int64, error) {
+	return sf.f.Seek(offset, whence)
 }
 
 func (sf *SafeFile) UnsafeReadAt(b []byte, off int64) (n int, err error) {

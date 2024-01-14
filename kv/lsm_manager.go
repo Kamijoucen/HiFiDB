@@ -7,7 +7,6 @@ type LsmManager struct {
 	sstService  *SstService
 	metaService *MetaService
 	walService  *WalService
-	SstService  *SstService
 }
 
 func NewLsmManager() *LsmManager {
@@ -32,15 +31,13 @@ func (lsm *LsmManager) Get(key []byte) ([]byte, error) {
 	if mv != nil {
 		switch mv.ValueType {
 		case entity.NORMAL_VALUE:
-			// return mv.Value, nil
+			fallthrough
 		case entity.UPDATE_VALUE:
 			return mv.Value, nil
 		case entity.DELETE_VALUE:
 			return nil, nil
 		}
 	}
-
-	// TODO
 	return nil, nil
 }
 

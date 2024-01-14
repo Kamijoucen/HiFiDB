@@ -150,7 +150,7 @@ func (sm *SstService) flushSst() error {
 		}
 		// 写入索引项的offset
 		sm.currentSstState.sstBytesSize += 8
-		if _, err := file.UnsafeWrite(Uint64ToBytes(tuple.Second)); err != nil {
+		if _, err := file.UnsafeWrite(Uint64ToBytes(tuple.Second)); err != nil { 
 			panic(err)
 		}
 	}
@@ -217,7 +217,7 @@ func (sm *SstService) resetNextSstFile() error {
 	if sm.currentSstState != nil {
 		_ = sm.currentSstState.sstFile.Close()
 	}
-	nId, err := sm.metaService.NextSstId()
+	nId, err := sm.metaService.GetNextSstId()
 	if err != nil {
 		return err
 	}

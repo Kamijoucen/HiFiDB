@@ -23,7 +23,7 @@ type MetaService struct {
 
 func NewMetaService() *MetaService {
 	m := &MetaService{
-		sstMetaFileCache: common.NewLRUCache[uint64, entity.SSTMeta](1000),
+		sstMetaFileCache: common.NewLRUCache[uint64, entity.SSTMeta](10000),
 	}
 	if err := m.loadPoint(); err != nil {
 		panic(err)
@@ -73,7 +73,17 @@ func (mm *MetaService) initCurrentPoint() error {
 	return nil
 }
 
-func (mm *MetaService) NextSstId() (uint64, error) {
+// get meta info
+func (mm *MetaService) GetSstMeta(sstId uint64) (*entity.SSTMeta, error) {
+	s := mm.sstMetaFileCache.Get(sstId)
+	for s == nil {
+		panic("not implement")
+	}
+	// mm.scanSstMetaById()
+	return s, nil
+}
+
+func (mm *MetaService) GetNextSstId() (uint64, error) {
 
 	mm.lock.Lock()
 	defer mm.lock.Unlock()
@@ -96,6 +106,36 @@ func (mm *MetaService) writeNextSstId(sstId uint64) error {
 	return nil
 }
 
+// scan meta info
+func (mm *MetaService) scanSstMetaById(sstId uint64) (*entity.SSTMeta, error) {
+	b := make([]byte, 1)
+	for {
+		n, err := mm.curMetaFile.UnsafeRead(b)
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		if n == 0 {
+			break
+		}
+		switch BytesToUint8(b) {
+		case entity.NEXT_SST_FILE_ID_NODE:
+			mm.curMetaFile.UnsafeSeek(8, io.SeekStart)
+		case entity.NEXT_META_FILE_ID_NODE:
+			panic("not implement")
+		case entity.SST_META_NODE:
+			mm.loadSstMeta()
+		case entity.DELETE_SST_FILE_NODE:
+			panic("not implement")
+		case entity.SST_LEVEL_NODE:
+			panic("not implement")
+		default:
+			panic("not implement")
+		}
+	}
+	return nil, nil
+}
+
+
 func (mm *MetaService) loadMetaFile() error {
 	b := make([]byte, 1)
 	for {
@@ -112,7 +152,11 @@ func (mm *MetaService) loadMetaFile() error {
 		case entity.NEXT_META_FILE_ID_NODE:
 			panic("not implement")
 		case entity.SST_META_NODE:
-			mm.loadSstMeta()
+			if meta, err := mm.loadSstMeta(); err != nil {
+				return err
+			} else {
+				mm.sstMetaFileCache.Put(meta.FileId, meta)
+			}
 		case entity.DELETE_SST_FILE_NODE:
 			panic("not implement")
 		case entity.SST_LEVEL_NODE:
@@ -142,40 +186,39 @@ func (mm *MetaService) loadNextSstId() error {
 }
 
 // load sst meta
-func (mm *MetaService) loadSstMeta() error {
+func (mm *MetaService) loadSstMeta() (*entity.SSTMeta, error) {
 	// TODO 错误码处理
 	b := make([]byte, 16)
 	// 读取首部16个字节
 	if _, err := mm.curMetaFile.UnsafeRead(b); err != nil {
-		return err
+		return nil, err
 	}
 	sstMeta := &entity.SSTMeta{}
 	sstMeta.FileId = BytesToUint64(b[:8])
 	sstMeta.Level = BytesToUint64(b[8:16])
 	// 读取最小key长度
 	if _, err := mm.curMetaFile.UnsafeRead(b[:4]); err != nil {
-		return err
+		return nil, err
 	}
 	minKeyLen := BytesToUint32(b[:4])
 	// 读取最小key
 	minKey := make([]byte, minKeyLen)
 	if _, err := mm.curMetaFile.UnsafeRead(minKey); err != nil {
-		return err
+		return nil, err
 	}
 	sstMeta.Range.MinKey = minKey
 	// 读取最大key长度
 	if _, err := mm.curMetaFile.UnsafeRead(b[:4]); err != nil {
-		return err
+		return nil, err
 	}
 	maxKeyLen := BytesToUint32(b[:4])
 	// 读取最大key
 	maxKey := make([]byte, maxKeyLen)
 	if _, err := mm.curMetaFile.UnsafeRead(maxKey); err != nil {
-		return err
+		return nil, err
 	}
 	sstMeta.Range.MaxKey = maxKey
-	mm.sstMetaFileCache.Put(sstMeta.FileId, sstMeta)
-	return nil
+	return sstMeta, nil
 }
 
 // Write sst file meta
