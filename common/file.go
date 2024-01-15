@@ -2,7 +2,6 @@ package common
 
 import (
 	"bufio"
-	"errors"
 	"os"
 	"sync"
 )
@@ -43,6 +42,16 @@ func NewSafeFileWithLock(path string, hasLock bool) *SafeFile {
 	return file
 }
 
+// lock
+func (sf *SafeFile) Lock() {
+	sf.lock.Lock()
+}
+
+// unlock
+func (sf *SafeFile) Unlock() {
+	sf.lock.Unlock()
+}
+
 func (sf *SafeFile) Open(flag int) error {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
@@ -59,66 +68,27 @@ func (sf *SafeFile) Open(flag int) error {
 	return nil
 }
 
+func (sf *SafeFile) Seek(offset int64, whence int) (int64, error) {
+	return sf.f.Seek(offset, whence)
+}
+
 func (sf *SafeFile) ReadAt(b []byte, off int64) (n int, err error) {
-	sf.lock.RLock()
-	defer sf.lock.RUnlock()
 	return sf.f.ReadAt(b, off)
 }
 
 func (sf *SafeFile) Read(b []byte) (n int, err error) {
-	sf.lock.RLock()
-	defer sf.lock.RUnlock()
 	return sf.f.Read(b)
 }
 
 func (sf *SafeFile) Write(b []byte) (n int, err error) {
-	sf.lock.Lock()
-	defer sf.lock.Unlock()
 	return sf.buf.Write(b)
 }
 
-// seek
-func (sf *SafeFile) Seek(offset int64, whence int) (int64, error) {
-	sf.lock.Lock()
-	defer sf.lock.Unlock()
-	return sf.f.Seek(offset, whence)
-}
-
-// unsafe seek
-func (sf *SafeFile) UnsafeSeek(offset int64, whence int) (int64, error) {
-	return sf.f.Seek(offset, whence)
-}
-
-func (sf *SafeFile) UnsafeReadAt(b []byte, off int64) (n int, err error) {
-	return sf.f.ReadAt(b, off)
-}
-
-func (sf *SafeFile) UnsafeRead(b []byte) (n int, err error) {
-	return sf.f.Read(b)
-}
-
-func (sf *SafeFile) UnsafeWrite(b []byte) (n int, err error) {
-	return sf.buf.Write(b)
-}
-
-// flush
 func (sf *SafeFile) Flush() error {
-	sf.lock.Lock()
-	defer sf.lock.Unlock()
-	if sf.state != OPEN {
-		return errors.New("file not open")
-	}
-	return sf.buf.Flush()
-}
-
-// unsafe flush
-func (sf *SafeFile) UnsafeFlush() error {
 	return sf.buf.Flush()
 }
 
 func (sf *SafeFile) Close() error {
-	sf.lock.Lock()
-	defer sf.lock.Unlock()
 	if sf.state == CLOSE || sf.state == NONE {
 		return nil
 	}
@@ -130,20 +100,17 @@ func (sf *SafeFile) Close() error {
 }
 
 func (sf *SafeFile) IsExist() bool {
-	sf.lock.RLock()
-	defer sf.lock.RUnlock()
 	if _, err := os.Stat(sf.path); err == nil {
 		return true
 	}
 	return false
 }
 
-// write bytes
 func WriteBytesAndFlush(f *SafeFile, b []byte) error {
-	if _, err := f.UnsafeWrite(b); err != nil {
+	if _, err := f.Write(b); err != nil {
 		return err
 	}
-	if err := f.UnsafeFlush(); err != nil {
+	if err := f.Flush(); err != nil {
 		return err
 	}
 	return nil

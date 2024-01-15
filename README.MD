@@ -2,7 +2,7 @@
 
 ## 整体结构
 
-![结构图](pic/ hifidb.png)
+![结构图](pic/hifidb.png)
 
 ## 存储基本数据块结构
 ![结构图](pic/sst.png)

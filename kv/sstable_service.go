@@ -111,11 +111,11 @@ func (sm *SstService) flushDataBlock() error {
 	// 记录数据块最后一个字节的offset，key是当前数据块最后一个数据项
 	sm.currentSstState.sstBlockLastKey = append(sm.currentSstState.sstBlockLastKey, &tuple{First: blockLastItem.Key, Second: sm.currentSstState.sstBytesSize})
 	// 写入数据
-	if _, err := sm.currentSstState.sstFile.UnsafeWrite(sm.currentSstState.blockBytes); err != nil {
+	if _, err := sm.currentSstState.sstFile.Write(sm.currentSstState.blockBytes); err != nil {
 		panic(err)
 	}
 	// flush
-	if err := sm.currentSstState.sstFile.UnsafeFlush(); err != nil {
+	if err := sm.currentSstState.sstFile.Flush(); err != nil {
 		panic(err)
 	}
 	sm.currentSstState.currentBlockSize = 0
@@ -140,17 +140,17 @@ func (sm *SstService) flushSst() error {
 	for _, tuple := range sm.currentSstState.sstBlockLastKey {
 		// 写入索引项的key长度
 		sm.currentSstState.sstBytesSize += 4
-		if _, err := file.UnsafeWrite(Uint32ToBytes(uint32(len(tuple.First)))); err != nil {
+		if _, err := file.Write(Uint32ToBytes(uint32(len(tuple.First)))); err != nil {
 			panic(err)
 		}
 		// 写入索引项的key
 		sm.currentSstState.sstBytesSize += uint64(len(tuple.First))
-		if _, err := file.UnsafeWrite(tuple.First); err != nil {
+		if _, err := file.Write(tuple.First); err != nil {
 			panic(err)
 		}
 		// 写入索引项的offset
 		sm.currentSstState.sstBytesSize += 8
-		if _, err := file.UnsafeWrite(Uint64ToBytes(tuple.Second)); err != nil { 
+		if _, err := file.Write(Uint64ToBytes(tuple.Second)); err != nil {
 			panic(err)
 		}
 	}
@@ -158,16 +158,16 @@ func (sm *SstService) flushSst() error {
 	// 一个footer的结构是：index block offset + index block length + magic number
 	// 8 + 8 + 4
 	sm.currentSstState.sstBytesSize += 20
-	if _, err := file.UnsafeWrite(Uint64ToBytes(sstIndexOffset)); err != nil {
+	if _, err := file.Write(Uint64ToBytes(sstIndexOffset)); err != nil {
 		panic(err)
 	}
-	if _, err := file.UnsafeWrite(Uint64ToBytes(sstIndexLen)); err != nil {
+	if _, err := file.Write(Uint64ToBytes(sstIndexLen)); err != nil {
 		panic(err)
 	}
-	if _, err := file.UnsafeWrite(Uint32ToBytes(entity.MAGIC_NUMBER)); err != nil {
+	if _, err := file.Write(Uint32ToBytes(entity.MAGIC_NUMBER)); err != nil {
 		panic(err)
 	}
-	if err := file.UnsafeFlush(); err != nil {
+	if err := file.Flush(); err != nil {
 		panic(err)
 	}
 
