@@ -31,10 +31,10 @@ func NewMetaService() *MetaService {
 	if err := m.initCurrentPoint(); err != nil {
 		panic(err)
 	}
+	m.curMetaFile = m.openNewMetaFile()
 	if err := m.loadMetaFile(); err != nil {
 		panic(err)
 	}
-	m.curMetaFile = m.openNewMetaFile()
 	return m
 }
 

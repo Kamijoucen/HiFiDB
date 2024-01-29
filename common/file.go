@@ -53,8 +53,10 @@ func (sf *SafeFile) Unlock() {
 }
 
 func (sf *SafeFile) Open(flag int) error {
-	sf.lock.Lock()
-	defer sf.lock.Unlock()
+	if sf.lock != nil {
+		sf.lock.Lock()
+		defer sf.lock.Unlock()
+	}
 	if sf.state == OPEN || sf.state == CLOSE {
 		return nil
 	}
