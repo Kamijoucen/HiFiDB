@@ -1,6 +1,6 @@
 package main
 
-import "github.com/kamijoucen/hifidb/kv"
+import "github.com/kamijoucen/hifidb/pkg/kv"
 
 func main() {
 

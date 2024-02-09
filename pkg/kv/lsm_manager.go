@@ -1,6 +1,6 @@
 package kv
 
-import "github.com/kamijoucen/hifidb/kv/entity"
+import "github.com/kamijoucen/hifidb/pkg/kv/entity"
 
 type LsmManager struct {
 	memTable    *MemTableService

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/kamijoucen/hifidb/kv/entity"
+	"github.com/kamijoucen/hifidb/pkg/kv/entity"
 )
 
 // bst test

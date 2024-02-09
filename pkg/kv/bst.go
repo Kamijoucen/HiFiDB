@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/kamijoucen/hifidb/common"
-	"github.com/kamijoucen/hifidb/kv/entity"
+	"github.com/kamijoucen/hifidb/pkg/kv/common"
+	"github.com/kamijoucen/hifidb/pkg/kv/entity"
 )
 
 // bstTable 二分查找树的实现。

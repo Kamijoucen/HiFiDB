@@ -1,6 +1,7 @@
 package kv
 
-import "github.com/kamijoucen/hifidb/config"
+import "github.com/kamijoucen/hifidb/pkg/config"
+
 
 type DBConfig config.DBConfig
 

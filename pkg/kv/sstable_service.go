@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/kamijoucen/hifidb/common"
-	"github.com/kamijoucen/hifidb/config"
-	"github.com/kamijoucen/hifidb/kv/entity"
+	"github.com/kamijoucen/hifidb/pkg/config"
+	"github.com/kamijoucen/hifidb/pkg/kv/common"
+	"github.com/kamijoucen/hifidb/pkg/kv/entity"
 )
 
 type tuple common.Tuple[[]byte, uint64]

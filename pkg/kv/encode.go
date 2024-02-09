@@ -3,8 +3,8 @@ package kv
 import (
 	"encoding/binary"
 
-	"github.com/kamijoucen/hifidb/common"
-	"github.com/kamijoucen/hifidb/kv/entity"
+	"github.com/kamijoucen/hifidb/pkg/kv/common"
+	"github.com/kamijoucen/hifidb/pkg/kv/entity"
 )
 
 func EnCodeNextId(flag uint8, nextId uint64) []byte {

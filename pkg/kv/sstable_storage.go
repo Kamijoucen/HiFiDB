@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/kamijoucen/hifidb/common"
-	"github.com/kamijoucen/hifidb/kv/entity"
+	"github.com/kamijoucen/hifidb/pkg/kv/common"
+	"github.com/kamijoucen/hifidb/pkg/kv/entity"
 )
 
 type SsTableState struct {
@@ -28,8 +28,9 @@ func OpenNewSsTable(nextSstId uint64, db *DB) (*SsTableState, error) {
 }
 
 func (sst *SsTableState) WriteItem(item *entity.DataItem) {
+
 }
 
-func (sst *SsTableState) Close() {
-	_ = sst.File.Close()
+func (sst *SsTableState) Close() error {
+	return sst.File.Close()
 }
