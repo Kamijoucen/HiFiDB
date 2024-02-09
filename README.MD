@@ -7,6 +7,9 @@
 ## 存储基本数据块结构
 ![结构图](docs/pic/sst.png)
 
+## 数据写入流程
+![结构图](docs/pic/sstwrite.png)
+
 ## 操作语言
 ```json
 

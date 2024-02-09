@@ -28,7 +28,7 @@ func OpenNewSsTable(nextSstId uint64, db *DB) (*SsTableState, error) {
 }
 
 func (sst *SsTableState) WriteItem(item *entity.DataItem) {
-
+	
 }
 
 func (sst *SsTableState) Close() error {
