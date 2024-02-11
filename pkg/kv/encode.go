@@ -79,3 +79,15 @@ func SSTMetaToBytes(meta *entity.SSTMeta) []byte {
 	copy(b[25+len(meta.Range.MinKey):], meta.Range.MaxKey)
 	return b
 }
+
+// encode key value to bytes
+func DataItemToBytes(item *entity.DataItem) []byte {
+	// key size + key + value size + value
+	byteLen := 4 + len(item.Key) + 4 + len(item.Value)
+	b := make([]byte, byteLen)
+	binary.BigEndian.PutUint32(b, uint32(len(item.Key)))
+	copy(b[4:], item.Key)
+	binary.BigEndian.PutUint32(b[4+len(item.Key):], uint32(len(item.Value)))
+	copy(b[8+len(item.Key):], item.Value)
+	return b
+}
