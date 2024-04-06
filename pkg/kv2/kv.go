@@ -10,6 +10,7 @@ import (
 
 type KV struct {
 	CurSST *SST
+	
 }
 
 func Open(cfg *config.DBConfig) (*KV, error) {
@@ -26,16 +27,4 @@ func Open(cfg *config.DBConfig) (*KV, error) {
 		File: file,
 	}
 	return kv, nil
-}
-
-func (k *KV) Put(key, value *string) error {
-	return nil
-}
-
-func (k *KV) Get(key *string) (*string, error) {
-	return nil, nil
-}
-
-func (k *KV) Del(key *string) (*string, error) {
-	return nil, nil
 }

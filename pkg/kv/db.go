@@ -2,7 +2,6 @@ package kv
 
 import "github.com/kamijoucen/hifidb/pkg/config"
 
-
 type DBConfig config.DBConfig
 
 type DB struct {
