@@ -1,10 +1,13 @@
 package kv
 
 type DB struct {
+	path string
 }
 
 func Open() *DB {
-	return &DB{}
+	return &DB{
+		path: "~/tempdb",
+	}
 }
 
 // Put
