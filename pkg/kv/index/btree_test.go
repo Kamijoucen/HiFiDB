@@ -3,8 +3,9 @@ package index
 import (
 	"testing"
 
-	"github.com/kamijoucen/hifidb/pkg/data"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kamijoucen/hifidb/pkg/kv/data"
 )
 
 func TestBTree_Put(t *testing.T) {

@@ -4,7 +4,8 @@ import (
 	"bytes"
 
 	"github.com/google/btree"
-	"github.com/kamijoucen/hifidb/pkg/data"
+
+	"github.com/kamijoucen/hifidb/pkg/kv/data"
 )
 
 type Indexer interface {
