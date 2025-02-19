@@ -17,3 +17,11 @@ type LogRecordPos struct {
 	Fid    uint32
 	Offset int64
 }
+
+func EncodeLogRecord(r *LogRecord) ([]byte, int64) {
+	return nil, 0
+}
+
+func DecodeLogRecord(data []byte) *LogRecord {
+	return nil
+}

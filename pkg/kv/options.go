@@ -1,7 +1,7 @@
 package kv
 
 type Options struct {
-	DirPath string
+	DirPath        string
+	DataFileSize   int64
+	EachSyncWrites bool
 }
-
-
