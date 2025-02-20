@@ -3,6 +3,7 @@ package kv
 import (
 	"io"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -56,9 +57,6 @@ func Open(options *Options) (*DB, error) {
 
 func (db *DB) Put(key, value []byte) error {
 
-	db.lock.Lock()
-	defer db.lock.Unlock()
-
 	if len(key) == 0 {
 		return ErrKeyIsEmpty
 	}
@@ -69,7 +67,7 @@ func (db *DB) Put(key, value []byte) error {
 		Type:  data.LogRecordNormal,
 	}
 
-	pos, err := db.appendLogRecord(logRecord)
+	pos, err := db.appendLogRecordWithLock(logRecord)
 	if err != nil {
 		return err
 	}
@@ -81,6 +79,9 @@ func (db *DB) Put(key, value []byte) error {
 }
 
 func (db *DB) Get(key []byte) ([]byte, error) {
+
+	db.lock.RLock()
+	defer db.lock.RUnlock()
 
 	if len(key) == 0 {
 		return nil, ErrKeyIsEmpty
@@ -112,6 +113,42 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 		return nil, ErrKeyNotFound
 	}
 	return r.Value, nil
+}
+
+func (db *DB) Delete(key []byte) error {
+
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	if len(key) == 0 {
+		return ErrKeyIsEmpty
+	}
+
+	// 先在内存中查询索引是否存在
+	if db.index.Get(key) == nil {
+		return nil
+	}
+
+	logRecord := &data.LogRecord{
+		Key:  key,
+		Type: data.LogRecordDelete,
+	}
+
+	_, err := db.appendLogRecordWithLock(logRecord)
+	if err != nil {
+		return err
+	}
+
+	if !db.index.Delete(key) {
+		return ErrIndexUpdateFailed
+	}
+	return nil
+}
+
+func (db *DB) appendLogRecordWithLock(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+	return db.appendLogRecord(logRecord)
 }
 
 func (db *DB) appendLogRecord(r *data.LogRecord) (*data.LogRecordPos, error) {
@@ -212,14 +249,8 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 	if len(fileIds) == 0 {
 		return nil
 	}
-	for _, fid := range fileIds {
-		var fileId = fid
-		var dataFile *data.DataFile
-		if fileId == db.activeFile.FileId {
-			dataFile = db.activeFile
-		} else {
-			dataFile = db.olderFiles[fileId]
-		}
+
+	processLogRecords := func(dataFile *data.DataFile, fileId uint32) error {
 		var offset int64 = 0
 		for {
 			logRecordBytes, err := dataFile.ReadAt(offset)
@@ -246,6 +277,30 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 		if fileId == db.activeFile.FileId {
 			db.activeFile.WriteOffset = offset
 		}
+		return nil
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(fileIds))
+	sem := make(chan struct{}, runtime.NumCPU()*2)
+
+	for _, fid := range fileIds {
+		sem <- struct{}{}
+		go func(fid uint32) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			var dataFile *data.DataFile
+			if fid == db.activeFile.FileId {
+				dataFile = db.activeFile
+			} else {
+				dataFile = db.olderFiles[fid]
+			}
+			if err := processLogRecords(dataFile, fid); err != nil {
+				panic(err)
+			}
+		}(fid)
+	}
+
+	wg.Wait()
 	return nil
 }
