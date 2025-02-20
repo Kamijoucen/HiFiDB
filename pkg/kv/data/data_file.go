@@ -4,6 +4,8 @@ import (
 	"github.com/kamijoucen/hifidb/pkg/kv/fio"
 )
 
+const DataFileSuffix = ".data"
+
 type DataFile struct {
 	FileId      uint32
 	WriteOffset int64

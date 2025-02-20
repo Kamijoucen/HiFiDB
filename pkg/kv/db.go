@@ -1,6 +1,11 @@
 package kv
 
 import (
+	"io"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/kamijoucen/hifidb/pkg/kv/data"
@@ -13,6 +18,40 @@ type DB struct {
 	activeFile *data.DataFile
 	olderFiles map[uint32]*data.DataFile
 	index      index.Indexer
+}
+
+func Open(options *Options) (*DB, error) {
+
+	if err := checkOptions(options); err != nil {
+		return nil, err
+	}
+
+	// 检查目录是否存在
+	if _, err := os.Stat(options.DirPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(options.DirPath, os.ModePerm); err != nil {
+			return nil, err
+		}
+	}
+
+	// 初始化db
+	db := &DB{
+		options:    options,
+		lock:       &sync.RWMutex{},
+		olderFiles: make(map[uint32]*data.DataFile),
+		index:      index.NewIndex(index.BTree),
+	}
+
+	// 加载数据文件
+	fileIds, err := db.loadDataFiles()
+	if err != nil {
+		return nil, err
+	}
+
+	// 加载索引
+	if err := db.loadIndexFromDataFiles(fileIds); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func (db *DB) Put(key, value []byte) error {
@@ -125,5 +164,88 @@ func (db *DB) setActiveDataFile() error {
 		return err
 	}
 	db.activeFile = d
+	return nil
+}
+
+func (db *DB) loadDataFiles() ([]uint32, error) {
+
+	dirFiles, err := os.ReadDir(db.options.DirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var fileIds []uint32
+	// 遍历所有.data文件
+	for _, f := range dirFiles {
+		if !strings.HasSuffix(f.Name(), data.DataFileSuffix) {
+			continue
+		}
+		nameArr := strings.Split(f.Name(), ".")
+		fid, err := strconv.Atoi(nameArr[0])
+		if err != nil {
+			return nil, ErrDataDirCorrupted
+		}
+		fileIds = append(fileIds, uint32(fid))
+	}
+	// 排序
+	sort.Slice(fileIds, func(i, j int) bool {
+		return fileIds[i] < fileIds[j]
+	})
+
+	// 逐个加载
+	for i, fid := range fileIds {
+		dataFile, err := data.OpenDataFile(db.options.DirPath, fid)
+		if err != nil {
+			return nil, err
+		}
+		if i == len(fileIds)-1 {
+			db.activeFile = dataFile
+		} else {
+			db.olderFiles[fid] = dataFile
+		}
+	}
+
+	return fileIds, nil
+}
+
+func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
+	if len(fileIds) == 0 {
+		return nil
+	}
+	for _, fid := range fileIds {
+		var fileId = fid
+		var dataFile *data.DataFile
+		if fileId == db.activeFile.FileId {
+			dataFile = db.activeFile
+		} else {
+			dataFile = db.olderFiles[fileId]
+		}
+		var offset int64 = 0
+		for {
+			logRecordBytes, err := dataFile.ReadAt(offset)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return err
+			}
+			logRecord := data.DecodeLogRecord(logRecordBytes)
+
+			if logRecord.Type == data.LogRecordDelete {
+				db.index.Delete(logRecord.Key)
+			} else {
+				logRecordPos := &data.LogRecordPos{
+					Fid:    fileId,
+					Offset: offset,
+				}
+				db.index.Put(logRecord.Key, logRecordPos)
+			}
+			offset += int64(len(logRecordBytes))
+		}
+		// 如果是活跃文件，需要更新offset
+		if fileId == db.activeFile.FileId {
+			db.activeFile.WriteOffset = offset
+		}
+	}
 	return nil
 }
