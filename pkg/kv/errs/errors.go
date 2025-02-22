@@ -1,4 +1,4 @@
-package kv
+package errs
 
 import "errors"
 
@@ -8,4 +8,5 @@ var (
 	ErrKeyNotFound       = errors.New("key not found")
 	ErrDataFileNotFound  = errors.New("data file not found")
 	ErrDataDirCorrupted  = errors.New("data dir corrupted")
+	ErrInvalidCRC        = errors.New("invalid crc")
 )

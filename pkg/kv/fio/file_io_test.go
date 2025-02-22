@@ -14,7 +14,7 @@ func TestFileIO_Write(t *testing.T) {
 	tmpFile.Close()
 	defer os.Remove(tmpName)
 
-	fioInstance, err := NewFileIO(tmpName)
+	fioInstance, err := NewFileIOManager(tmpName)
 	assert.NoError(t, err)
 
 	data := []byte("Hello HiFiDB - Write")
@@ -33,7 +33,7 @@ func TestFileIO_Sync(t *testing.T) {
 	tmpFile.Close()
 	defer os.Remove(tmpName)
 
-	fioInstance, err := NewFileIO(tmpName)
+	fioInstance, err := NewFileIOManager(tmpName)
 	assert.NoError(t, err)
 
 	err = fioInstance.Sync()
@@ -50,7 +50,7 @@ func TestFileIO_Read(t *testing.T) {
 	tmpFile.Close()
 	defer os.Remove(tmpName)
 
-	fioInstance, err := NewFileIO(tmpName)
+	fioInstance, err := NewFileIOManager(tmpName)
 	assert.NoError(t, err)
 
 	data := []byte("Hello HiFiDB - Read")
@@ -74,7 +74,7 @@ func TestFileIO_Close(t *testing.T) {
 	tmpFile.Close()
 	defer os.Remove(tmpName)
 
-	fioInstance, err := NewFileIO(tmpName)
+	fioInstance, err := NewFileIOManager(tmpName)
 	assert.NoError(t, err)
 
 	err = fioInstance.Close()

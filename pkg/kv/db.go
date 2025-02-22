@@ -3,13 +3,13 @@ package kv
 import (
 	"io"
 	"os"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/kamijoucen/hifidb/pkg/kv/data"
+	"github.com/kamijoucen/hifidb/pkg/kv/errs"
 	"github.com/kamijoucen/hifidb/pkg/kv/index"
 )
 
@@ -58,7 +58,7 @@ func Open(options *Options) (*DB, error) {
 func (db *DB) Put(key, value []byte) error {
 
 	if len(key) == 0 {
-		return ErrKeyIsEmpty
+		return errs.ErrKeyIsEmpty
 	}
 
 	logRecord := &data.LogRecord{
@@ -73,7 +73,7 @@ func (db *DB) Put(key, value []byte) error {
 	}
 
 	if !db.index.Put(key, pos) {
-		return ErrIndexUpdateFailed
+		return errs.ErrIndexUpdateFailed
 	}
 	return nil
 }
@@ -84,12 +84,12 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	defer db.lock.RUnlock()
 
 	if len(key) == 0 {
-		return nil, ErrKeyIsEmpty
+		return nil, errs.ErrKeyIsEmpty
 	}
 
 	pos := db.index.Get(key)
 	if pos == nil {
-		return nil, ErrKeyNotFound
+		return nil, errs.ErrKeyNotFound
 	}
 
 	var d *data.DataFile
@@ -100,17 +100,15 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	}
 
 	if d == nil {
-		return nil, ErrDataFileNotFound
+		return nil, errs.ErrDataFileNotFound
 	}
 
-	recordBytes, err := d.ReadAt(pos.Offset)
+	r, _, err := d.ReadLogRecord(pos.Offset)
 	if err != nil {
 		return nil, err
 	}
-	r := data.DecodeLogRecord(recordBytes)
-
 	if r.Type == data.LogRecordDelete {
-		return nil, ErrKeyNotFound
+		return nil, errs.ErrKeyNotFound
 	}
 	return r.Value, nil
 }
@@ -121,7 +119,7 @@ func (db *DB) Delete(key []byte) error {
 	defer db.lock.Unlock()
 
 	if len(key) == 0 {
-		return ErrKeyIsEmpty
+		return errs.ErrKeyIsEmpty
 	}
 
 	// 先在内存中查询索引是否存在
@@ -140,7 +138,7 @@ func (db *DB) Delete(key []byte) error {
 	}
 
 	if !db.index.Delete(key) {
-		return ErrIndexUpdateFailed
+		return errs.ErrIndexUpdateFailed
 	}
 	return nil
 }
@@ -220,7 +218,7 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 		nameArr := strings.Split(f.Name(), ".")
 		fid, err := strconv.Atoi(nameArr[0])
 		if err != nil {
-			return nil, ErrDataDirCorrupted
+			return nil, errs.ErrDataDirCorrupted
 		}
 		fileIds = append(fileIds, uint32(fid))
 	}
@@ -249,58 +247,37 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 	if len(fileIds) == 0 {
 		return nil
 	}
-
-	processLogRecords := func(dataFile *data.DataFile, fileId uint32) error {
+	for _, fid := range fileIds {
+		var dataFile *data.DataFile
+		if fid == db.activeFile.FileId {
+			dataFile = db.activeFile
+		} else {
+			dataFile = db.olderFiles[fid]
+		}
 		var offset int64 = 0
 		for {
-			logRecordBytes, err := dataFile.ReadAt(offset)
+			logRecord, rSize, err := dataFile.ReadLogRecord(offset)
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
 				return err
 			}
-			logRecord := data.DecodeLogRecord(logRecordBytes)
-
 			if logRecord.Type == data.LogRecordDelete {
 				db.index.Delete(logRecord.Key)
 			} else {
 				logRecordPos := &data.LogRecordPos{
-					Fid:    fileId,
+					Fid:    fid,
 					Offset: offset,
 				}
 				db.index.Put(logRecord.Key, logRecordPos)
 			}
-			offset += int64(len(logRecordBytes))
+			offset += rSize
 		}
 		// 如果是活跃文件，需要更新offset
-		if fileId == db.activeFile.FileId {
+		if fid == db.activeFile.FileId {
 			db.activeFile.WriteOffset = offset
 		}
-		return nil
 	}
-
-	var wg sync.WaitGroup
-	wg.Add(len(fileIds))
-	sem := make(chan struct{}, runtime.NumCPU()*2)
-
-	for _, fid := range fileIds {
-		sem <- struct{}{}
-		go func(fid uint32) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			var dataFile *data.DataFile
-			if fid == db.activeFile.FileId {
-				dataFile = db.activeFile
-			} else {
-				dataFile = db.olderFiles[fid]
-			}
-			if err := processLogRecords(dataFile, fid); err != nil {
-				panic(err)
-			}
-		}(fid)
-	}
-
-	wg.Wait()
 	return nil
 }

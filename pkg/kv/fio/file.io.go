@@ -6,7 +6,7 @@ type FileIO struct {
 	fd *os.File
 }
 
-func NewFileIO(fileName string) (*FileIO, error) {
+func NewFileIOManager(fileName string) (*FileIO, error) {
 	fd, err := os.OpenFile(
 		fileName,
 		os.O_CREATE|os.O_RDWR|os.O_APPEND,
@@ -34,4 +34,12 @@ func (f *FileIO) Sync() error {
 
 func (f *FileIO) Close() error {
 	return f.fd.Close()
+}
+
+func (f *FileIO) Size() (int64, error) {
+	fi, err := f.fd.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return fi.Size(), nil
 }
