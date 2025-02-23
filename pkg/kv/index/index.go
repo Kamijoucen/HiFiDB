@@ -5,24 +5,15 @@ import (
 
 	"github.com/google/btree"
 
+	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/kv/data"
 )
 
-type Type = uint8
-
-const (
-	// BTree BTree index
-	BTree Type = iota + 1
-
-	// ART ART index
-	ART
-)
-
-func NewIndex(indexType Type) Indexer {
+func NewIndex(indexType cfg.IndexType) Indexer {
 	switch indexType {
-	case BTree:
+	case cfg.BTree:
 		return NewBTreeIndex()
-	case ART:
+	case cfg.ART:
 		return nil
 	default:
 		panic("unknown index type")

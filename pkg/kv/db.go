@@ -8,22 +8,23 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kamijoucen/hifidb/pkg/cfg"
+	"github.com/kamijoucen/hifidb/pkg/errs"
 	"github.com/kamijoucen/hifidb/pkg/kv/data"
-	"github.com/kamijoucen/hifidb/pkg/kv/errs"
 	"github.com/kamijoucen/hifidb/pkg/kv/index"
 )
 
 type DB struct {
-	options    *Options
+	options    *cfg.Options
 	lock       *sync.RWMutex
 	activeFile *data.HFile
 	olderFiles map[uint32]*data.HFile
 	index      index.Indexer
 }
 
-func Open(options *Options) (*DB, error) {
+func Open(options *cfg.Options) (*DB, error) {
 
-	if err := checkOptions(options); err != nil {
+	if err := cfg.CheckOptions(options); err != nil {
 		return nil, err
 	}
 
@@ -39,7 +40,7 @@ func Open(options *Options) (*DB, error) {
 		options:    options,
 		lock:       &sync.RWMutex{},
 		olderFiles: map[uint32]*data.HFile{},
-		index:      index.NewIndex(index.BTree),
+		index:      index.NewIndex(cfg.BTree),
 	}
 
 	// 加载数据文件
@@ -114,9 +115,6 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 }
 
 func (db *DB) Delete(key []byte) error {
-
-	db.lock.Lock()
-	defer db.lock.Unlock()
 
 	if len(key) == 0 {
 		return errs.ErrKeyIsEmpty

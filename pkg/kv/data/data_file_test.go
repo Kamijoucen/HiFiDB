@@ -76,7 +76,6 @@ func TestDataFile_ReadLogRecord(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, rec1, readRec1)
 	assert.Equal(t, size1, readSize1)
-	t.Log(readSize1)
 
 	// 多条 LogRecord，从不同的位置读取
 	rec2 := &LogRecord{

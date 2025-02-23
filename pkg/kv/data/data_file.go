@@ -6,7 +6,7 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/kamijoucen/hifidb/pkg/kv/errs"
+	"github.com/kamijoucen/hifidb/pkg/errs"
 	"github.com/kamijoucen/hifidb/pkg/kv/fio"
 )
 
