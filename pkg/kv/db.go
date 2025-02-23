@@ -16,8 +16,8 @@ import (
 type DB struct {
 	options    *Options
 	lock       *sync.RWMutex
-	activeFile *data.DataFile
-	olderFiles map[uint32]*data.DataFile
+	activeFile *data.HFile
+	olderFiles map[uint32]*data.HFile
 	index      index.Indexer
 }
 
@@ -38,7 +38,7 @@ func Open(options *Options) (*DB, error) {
 	db := &DB{
 		options:    options,
 		lock:       &sync.RWMutex{},
-		olderFiles: make(map[uint32]*data.DataFile),
+		olderFiles: map[uint32]*data.HFile{},
 		index:      index.NewIndex(index.BTree),
 	}
 
@@ -92,7 +92,7 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 		return nil, errs.ErrKeyNotFound
 	}
 
-	var d *data.DataFile
+	var d *data.HFile
 	if db.activeFile.FileId == pos.Fid {
 		d = db.activeFile
 	} else {
@@ -107,7 +107,7 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if r.Type == data.LogRecordDelete {
+	if r.Type == data.LogRecordDeleted {
 		return nil, errs.ErrKeyNotFound
 	}
 	return r.Value, nil
@@ -129,7 +129,7 @@ func (db *DB) Delete(key []byte) error {
 
 	logRecord := &data.LogRecord{
 		Key:  key,
-		Type: data.LogRecordDelete,
+		Type: data.LogRecordDeleted,
 	}
 
 	_, err := db.appendLogRecordWithLock(logRecord)
@@ -212,7 +212,7 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 	var fileIds []uint32
 	// 遍历所有.data文件
 	for _, f := range dirFiles {
-		if !strings.HasSuffix(f.Name(), data.DataFileSuffix) {
+		if !strings.HasSuffix(f.Name(), data.FileSuffix) {
 			continue
 		}
 		nameArr := strings.Split(f.Name(), ".")
@@ -248,7 +248,7 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 		return nil
 	}
 	for _, fid := range fileIds {
-		var dataFile *data.DataFile
+		var dataFile *data.HFile
 		if fid == db.activeFile.FileId {
 			dataFile = db.activeFile
 		} else {
@@ -263,7 +263,7 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 				}
 				return err
 			}
-			if logRecord.Type == data.LogRecordDelete {
+			if logRecord.Type == data.LogRecordDeleted {
 				db.index.Delete(logRecord.Key)
 			} else {
 				logRecordPos := &data.LogRecordPos{

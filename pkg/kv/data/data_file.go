@@ -10,34 +10,34 @@ import (
 	"github.com/kamijoucen/hifidb/pkg/kv/fio"
 )
 
-const DataFileSuffix = ".data"
+const FileSuffix = ".data"
 
-type DataFile struct {
+type HFile struct {
 	FileId      uint32
 	WriteOffset int64
 	IoManager   fio.IOManager
 }
 
-func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
+func OpenDataFile(dirPath string, fileId uint32) (*HFile, error) {
 
-	fileName := filepath.Join(dirPath, fmt.Sprintf("%010d%s", fileId, DataFileSuffix))
+	fileName := filepath.Join(dirPath, fmt.Sprintf("%010d%s", fileId, FileSuffix))
 	// 打开文件
 	ioManager, err := fio.NewIOManager(fileName)
 	if err != nil {
 		return nil, err
 	}
-	return &DataFile{
+	return &HFile{
 		FileId:      fileId,
 		WriteOffset: 0,
 		IoManager:   ioManager,
 	}, nil
 }
 
-func (d *DataFile) Sync() error {
+func (d *HFile) Sync() error {
 	return d.IoManager.Sync()
 }
 
-func (d *DataFile) Write(b []byte) error {
+func (d *HFile) Write(b []byte) error {
 	_, err := d.IoManager.Write(b)
 	if err != nil {
 		return err
@@ -46,12 +46,12 @@ func (d *DataFile) Write(b []byte) error {
 	return nil
 }
 
-func (d *DataFile) Close() error {
+func (d *HFile) Close() error {
 	return d.IoManager.Close()
 }
 
-// ReadLogRecord
-func (d *DataFile) ReadLogRecord(off int64) (*LogRecord, int64, error) {
+// ReadLogRecord 读取日志记录
+func (d *HFile) ReadLogRecord(off int64) (*LogRecord, int64, error) {
 
 	var fileSize, err = d.IoManager.Size()
 	if err != nil {
@@ -99,7 +99,7 @@ func (d *DataFile) ReadLogRecord(off int64) (*LogRecord, int64, error) {
 }
 
 // readNBytes
-func (d *DataFile) readNBytes(off int64, n int64) ([]byte, error) {
+func (d *HFile) readNBytes(off int64, n int64) ([]byte, error) {
 	// TODO 复用 buf
 	bf := make([]byte, n)
 	_, err := d.IoManager.Read(bf, off)

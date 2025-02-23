@@ -8,17 +8,17 @@ import (
 	"github.com/kamijoucen/hifidb/pkg/kv/data"
 )
 
-type IndexType = uint8
+type Type = uint8
 
 const (
-	// BTree
-	BTree IndexType = iota + 1
+	// BTree BTree index
+	BTree Type = iota + 1
 
-	// ART
+	// ART ART index
 	ART
 )
 
-func NewIndex(indexType IndexType) Indexer {
+func NewIndex(indexType Type) Indexer {
 	switch indexType {
 	case BTree:
 		return NewBTreeIndex()
