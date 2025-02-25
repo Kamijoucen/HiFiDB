@@ -14,15 +14,13 @@ import (
 // 测试完成之后销毁 DB 数据目录
 func destroyDB(db *DB) {
 	if db != nil {
-		if db.activeFile != nil {
-			_ = db.activeFile.Close()
+		// 关闭数据文件
+		err := db.Close()
+		if err != nil {
+			panic(err)
 		}
-		for _, of := range db.olderFiles {
-			if of != nil {
-				_ = of.Close()
-			}
-		}
-		err := os.RemoveAll(db.options.DirPath)
+
+		err = os.RemoveAll(db.options.DirPath)
 		if err != nil {
 			panic(err)
 		}
@@ -246,4 +244,64 @@ func TestDB_Delete(t *testing.T) {
 	val2, err := db2.Get(util.GetTestKey(22))
 	assert.Nil(t, err)
 	assert.Equal(t, val1, val2)
+}
+
+func TestDB_ListKeys(t *testing.T) {
+	opts := cfg.GetDefaultOptions()
+	dir, _ := os.MkdirTemp("", "bitcask-go-list-keys")
+	opts.DirPath = dir
+	db, err := Open(opts)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	// 数据库为空
+	keys1 := db.ListKeys()
+	assert.Equal(t, 0, len(keys1))
+
+	// 只有一条数据
+	err = db.Put(util.GetTestKey(11), util.RandomValue(20))
+	assert.Nil(t, err)
+	keys2 := db.ListKeys()
+	assert.Equal(t, 1, len(keys2))
+
+	// 有多条数据
+	err = db.Put(util.GetTestKey(22), util.RandomValue(20))
+	assert.Nil(t, err)
+	err = db.Put(util.GetTestKey(33), util.RandomValue(20))
+	assert.Nil(t, err)
+	err = db.Put(util.GetTestKey(44), util.RandomValue(20))
+	assert.Nil(t, err)
+
+	keys3 := db.ListKeys()
+	assert.Equal(t, 4, len(keys3))
+	for _, k := range keys3 {
+		assert.NotNil(t, k)
+	}
+}
+
+func TestDB_Fold(t *testing.T) {
+	opts := cfg.GetDefaultOptions()
+	dir, _ := os.MkdirTemp("", "bitcask-go-fold")
+	opts.DirPath = dir
+	db, err := Open(opts)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	err = db.Put(util.GetTestKey(11), util.RandomValue(20))
+	assert.Nil(t, err)
+	err = db.Put(util.GetTestKey(22), util.RandomValue(20))
+	assert.Nil(t, err)
+	err = db.Put(util.GetTestKey(33), util.RandomValue(20))
+	assert.Nil(t, err)
+	err = db.Put(util.GetTestKey(44), util.RandomValue(20))
+	assert.Nil(t, err)
+
+	err = db.Fold(func(key []byte, value []byte) bool {
+		assert.NotNil(t, key)
+		assert.NotNil(t, value)
+		return true
+	})
+	assert.Nil(t, err)
 }

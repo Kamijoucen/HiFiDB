@@ -37,6 +37,7 @@ type logRecordHeader struct {
 }
 
 func EncodeLogRecord(r *LogRecord) ([]byte, int64) {
+	// TODO 复用
 	// header buf
 	headerBuf := make([]byte, maxLogRecordHeaderSize)
 

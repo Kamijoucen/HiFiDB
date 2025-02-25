@@ -1,6 +1,8 @@
 package index
 
 import (
+	"bytes"
+	"sort"
 	"sync"
 
 	"github.com/google/btree"
@@ -54,6 +56,20 @@ func (b *BTreeIndex) Delete(key []byte) bool {
 	return oldItem != nil
 }
 
+func (b *BTreeIndex) Size() int {
+	return b.tree.Len()
+}
+
+func (b *BTreeIndex) Iterator(reverse bool) Iterator {
+	if b.tree == nil {
+		return nil
+	}
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
+	return newBTreeIterator(b.tree, reverse)
+}
+
 // BTree 索引迭代器
 type btreeIterator struct {
 	curIndex int     // 当前遍历的下表位置
@@ -62,44 +78,66 @@ type btreeIterator struct {
 }
 
 func newBTreeIterator(tree *btree.BTree, reverse bool) *btreeIterator {
+	// TODO 内存膨胀，优化
+	var idx int
+	values := make([]*Item, tree.Len())
+
+	sf := func(item btree.Item) bool {
+		values[idx] = item.(*Item)
+		idx++
+		return true
+	}
+	if reverse {
+		tree.Descend(sf)
+	} else {
+		tree.Ascend(sf)
+	}
 	return &btreeIterator{
 		curIndex: 0,
 		reverse:  reverse,
-		values:   make([]*Item, tree.Len()),
+		values:   values,
 	}
 }
 
 // Rewind 回到起始位置
 func (i *btreeIterator) Rewind() {
-
+	i.curIndex = 0
 }
 
 // Seek 移动第一个大于等于key的位置
 func (i *btreeIterator) Seek(key []byte) {
-	panic("not implemented") // TODO: Implement
+	if i.reverse {
+		i.curIndex = sort.Search(len(i.values), func(idx int) bool {
+			return bytes.Compare(i.values[idx].key, key) <= 0
+		})
+	} else {
+		i.curIndex = sort.Search(len(i.values), func(idx int) bool {
+			return bytes.Compare(i.values[idx].key, key) >= 0
+		})
+	}
 }
 
 // Next 移动到下一个key
 func (i *btreeIterator) Next() {
-	panic("not implemented") // TODO: Implement
+	i.curIndex++
 }
 
 // Valid 是否有效，即是否还有下一个key，用于退出循环
-func (i *btreeIterator) Valid() (_ bool) {
-	panic("not implemented") // TODO: Implement
+func (i *btreeIterator) Valid() bool {
+	return i.curIndex < len(i.values)
 }
 
 // Key 返回当前位置key
-func (i *btreeIterator) Key() (_ []byte) {
-	panic("not implemented") // TODO: Implement
+func (i *btreeIterator) Key() []byte {
+	return i.values[i.curIndex].key
 }
 
 // Value 返回当前位置value
-func (i *btreeIterator) Value() (_ *data.LogRecordPos) {
-	panic("not implemented") // TODO: Implement
+func (i *btreeIterator) Value() *data.LogRecordPos {
+	return i.values[i.curIndex].pos
 }
 
 // Close 关闭迭代器
 func (i *btreeIterator) Close() {
-	panic("not implemented") // TODO: Implement
+	i.values = nil
 }

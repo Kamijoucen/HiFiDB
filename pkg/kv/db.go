@@ -22,6 +22,7 @@ type DB struct {
 	index      index.Indexer
 }
 
+// Open 打开数据库
 func Open(options *cfg.Options) (*DB, error) {
 
 	if err := cfg.CheckOptions(options); err != nil {
@@ -56,6 +57,7 @@ func Open(options *cfg.Options) (*DB, error) {
 	return db, nil
 }
 
+// Put 添加数据
 func (db *DB) Put(key, value []byte) error {
 
 	if len(key) == 0 {
@@ -79,6 +81,7 @@ func (db *DB) Put(key, value []byte) error {
 	return nil
 }
 
+// Get 根据key获取数据
 func (db *DB) Get(key []byte) ([]byte, error) {
 
 	db.lock.RLock()
@@ -92,28 +95,10 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	if pos == nil {
 		return nil, errs.ErrKeyNotFound
 	}
-
-	var d *data.HFile
-	if db.activeFile.FileId == pos.Fid {
-		d = db.activeFile
-	} else {
-		d = db.olderFiles[pos.Fid]
-	}
-
-	if d == nil {
-		return nil, errs.ErrDataFileNotFound
-	}
-
-	r, _, err := d.ReadLogRecord(pos.Offset)
-	if err != nil {
-		return nil, err
-	}
-	if r.Type == data.LogRecordDeleted {
-		return nil, errs.ErrKeyNotFound
-	}
-	return r.Value, nil
+	return db.getValueByPosition(pos)
 }
 
+// Delete 根据key删除数据
 func (db *DB) Delete(key []byte) error {
 
 	if len(key) == 0 {
@@ -141,12 +126,106 @@ func (db *DB) Delete(key []byte) error {
 	return nil
 }
 
+// ListKeys 列出所有key
+func (db *DB) ListKeys() [][]byte {
+	// 无需加库锁，因为btree上的锁会保证key的一致性
+	indexIter := db.index.Iterator(false)
+	defer indexIter.Close()
+
+	keys := make([][]byte, db.index.Size())
+	var idx int
+	for indexIter.Rewind(); indexIter.Valid(); indexIter.Next() {
+		keys[idx] = indexIter.Key()
+		idx++
+	}
+	return keys
+}
+
+// Fold 遍历所有key
+func (db *DB) Fold(f func(key, value []byte) bool) error {
+
+	// 这里需要加，因为tree上的锁只会保证key的一致性，value的一致性需要库锁保证
+	db.lock.RLock()
+	defer db.lock.RUnlock()
+
+	indexIter := db.index.Iterator(false)
+
+	for indexIter.Rewind(); indexIter.Valid(); indexIter.Next() {
+		valueBytes, err := db.getValueByPosition(indexIter.Value())
+		if err != nil {
+			return err
+		}
+		if !f(indexIter.Key(), valueBytes) {
+			break
+		}
+	}
+
+	return nil
+}
+
+// Close 关闭数据库
+func (db *DB) Close() error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	if db.activeFile != nil {
+		if err := db.activeFile.Sync(); err != nil {
+			return err
+		}
+		if err := db.activeFile.Close(); err != nil {
+			return err
+		}
+	}
+
+
+	for _, d := range db.olderFiles {
+		if err := d.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// NewIterator 创建迭代器
+func (db *DB) NewIterator(opts *IteratorOptions) *Iterator {
+	indexIter := db.index.Iterator(opts.Reverse)
+	return &Iterator{
+		indexIter: indexIter,
+		db:        db,
+		options:   opts,
+	}
+}
+
+func (db *DB) getValueByPosition(pos *data.LogRecordPos) ([]byte, error) {
+	var d *data.HFile
+	if db.activeFile.FileId == pos.Fid {
+		d = db.activeFile
+	} else {
+		d = db.olderFiles[pos.Fid]
+	}
+
+	if d == nil {
+		return nil, errs.ErrDataFileNotFound
+	}
+
+	r, _, err := d.ReadLogRecord(pos.Offset)
+	if err != nil {
+		return nil, err
+	}
+	if r.Type == data.LogRecordDeleted {
+		return nil, errs.ErrKeyNotFound
+	}
+	return r.Value, nil
+}
+
+// appendLogRecordWithLock 添加日志记录 加锁
 func (db *DB) appendLogRecordWithLock(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
 	db.lock.Lock()
 	defer db.lock.Unlock()
 	return db.appendLogRecord(logRecord)
 }
 
+// appendLogRecord 添加日志记录
 func (db *DB) appendLogRecord(r *data.LogRecord) (*data.LogRecordPos, error) {
 
 	if db.activeFile == nil {
@@ -185,6 +264,7 @@ func (db *DB) appendLogRecord(r *data.LogRecord) (*data.LogRecordPos, error) {
 	return pos, nil
 }
 
+// setActiveDataFile 设置活跃的数据文件, 如果没有则创建一个
 func (db *DB) setActiveDataFile() error {
 
 	var initFleId uint32 = 0
@@ -200,6 +280,7 @@ func (db *DB) setActiveDataFile() error {
 	return nil
 }
 
+// loadDataFiles 加载数据文件
 func (db *DB) loadDataFiles() ([]uint32, error) {
 
 	dirFiles, err := os.ReadDir(db.options.DirPath)
@@ -241,6 +322,7 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 	return fileIds, nil
 }
 
+// loadIndexFromDataFiles 从数据文件加载索引
 func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 	if len(fileIds) == 0 {
 		return nil

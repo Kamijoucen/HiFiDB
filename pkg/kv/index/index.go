@@ -21,9 +21,21 @@ func NewIndex(indexType cfg.IndexType) Indexer {
 }
 
 type Indexer interface {
+
+	// Put 添加key-value，返回是否添加成功
 	Put(key []byte, value *data.LogRecordPos) bool
+
+	// Get 获取key对应的value
 	Get(key []byte) *data.LogRecordPos
+
+	// Delete 删除key，返回是否删除成功
 	Delete(key []byte) bool
+
+	// Size 获取索引大小
+	Size() int
+
+	// Iterator 获取迭代器
+	Iterator(reverse bool) Iterator
 }
 
 type Item struct {

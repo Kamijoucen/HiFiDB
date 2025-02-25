@@ -69,7 +69,7 @@ func CheckOptions(options *Options) error {
 func GetDefaultOptions() *Options {
 	op, _ := NewOptions(
 		WithDirPath("./data"),
-		WithDataFileSize(1024*1024*1024),
+		WithDataFileSize(1024*1024*1024), // 1GB
 		WithEachSyncWrites(false),
 		WithMemoryIndexType(BTree),
 	)
