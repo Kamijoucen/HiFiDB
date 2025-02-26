@@ -169,14 +169,10 @@ func (db *DB) Close() error {
 	defer db.lock.Unlock()
 
 	if db.activeFile != nil {
-		if err := db.activeFile.Sync(); err != nil {
-			return err
-		}
 		if err := db.activeFile.Close(); err != nil {
 			return err
 		}
 	}
-
 
 	for _, d := range db.olderFiles {
 		if err := d.Close(); err != nil {
@@ -184,6 +180,16 @@ func (db *DB) Close() error {
 		}
 	}
 	return nil
+}
+
+// Sync 持久化数据
+func (db *DB) Sync() error {
+	if db.activeFile == nil {
+		return nil
+	}
+	db.lock.Lock()
+	defer db.lock.Unlock()
+	return db.activeFile.Sync()
 }
 
 // NewIterator 创建迭代器
