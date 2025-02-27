@@ -10,16 +10,14 @@ import (
 
 	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
-	"github.com/kamijoucen/hifidb/pkg/kv/data"
-	"github.com/kamijoucen/hifidb/pkg/kv/index"
 )
 
 type DB struct {
 	options    *cfg.Options
 	lock       *sync.RWMutex
-	activeFile *data.HFile
-	olderFiles map[uint32]*data.HFile
-	index      index.Indexer
+	activeFile *HFile
+	olderFiles map[uint32]*HFile
+	index      Indexer
 }
 
 // Open 打开数据库
@@ -40,8 +38,8 @@ func Open(options *cfg.Options) (*DB, error) {
 	db := &DB{
 		options:    options,
 		lock:       &sync.RWMutex{},
-		olderFiles: map[uint32]*data.HFile{},
-		index:      index.NewIndex(cfg.BTree),
+		olderFiles: map[uint32]*HFile{},
+		index:      NewIndex(cfg.BTree),
 	}
 
 	// 加载数据文件
@@ -64,10 +62,10 @@ func (db *DB) Put(key, value []byte) error {
 		return errs.ErrKeyIsEmpty
 	}
 
-	logRecord := &data.LogRecord{
+	logRecord := &LogRecord{
 		Key:   key,
 		Value: value,
-		Type:  data.LogRecordNormal,
+		Type:  LogRecordNormal,
 	}
 
 	pos, err := db.appendLogRecordWithLock(logRecord)
@@ -110,9 +108,9 @@ func (db *DB) Delete(key []byte) error {
 		return nil
 	}
 
-	logRecord := &data.LogRecord{
+	logRecord := &LogRecord{
 		Key:  key,
-		Type: data.LogRecordDeleted,
+		Type: LogRecordDeleted,
 	}
 
 	_, err := db.appendLogRecordWithLock(logRecord)
@@ -129,7 +127,7 @@ func (db *DB) Delete(key []byte) error {
 // ListKeys 列出所有key
 func (db *DB) ListKeys() [][]byte {
 	// 无需加库锁，因为btree上的锁会保证key的一致性
-	indexIter := db.index.Iterator(false)
+	indexIter := db.index.IndexIterator(false)
 	defer indexIter.Close()
 
 	keys := make([][]byte, db.index.Size())
@@ -148,7 +146,7 @@ func (db *DB) Fold(f func(key, value []byte) bool) error {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
 
-	indexIter := db.index.Iterator(false)
+	indexIter := db.index.IndexIterator(false)
 
 	for indexIter.Rewind(); indexIter.Valid(); indexIter.Next() {
 		valueBytes, err := db.getValueByPosition(indexIter.Value())
@@ -194,7 +192,7 @@ func (db *DB) Sync() error {
 
 // NewIterator 创建迭代器
 func (db *DB) NewIterator(opts *IteratorOptions) *Iterator {
-	indexIter := db.index.Iterator(opts.Reverse)
+	indexIter := db.index.IndexIterator(opts.Reverse)
 	return &Iterator{
 		indexIter: indexIter,
 		db:        db,
@@ -202,8 +200,8 @@ func (db *DB) NewIterator(opts *IteratorOptions) *Iterator {
 	}
 }
 
-func (db *DB) getValueByPosition(pos *data.LogRecordPos) ([]byte, error) {
-	var d *data.HFile
+func (db *DB) getValueByPosition(pos *LogRecordPos) ([]byte, error) {
+	var d *HFile
 	if db.activeFile.FileId == pos.Fid {
 		d = db.activeFile
 	} else {
@@ -218,28 +216,28 @@ func (db *DB) getValueByPosition(pos *data.LogRecordPos) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if r.Type == data.LogRecordDeleted {
+	if r.Type == LogRecordDeleted {
 		return nil, errs.ErrKeyNotFound
 	}
 	return r.Value, nil
 }
 
 // appendLogRecordWithLock 添加日志记录 加锁
-func (db *DB) appendLogRecordWithLock(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
+func (db *DB) appendLogRecordWithLock(logRecord *LogRecord) (*LogRecordPos, error) {
 	db.lock.Lock()
 	defer db.lock.Unlock()
 	return db.appendLogRecord(logRecord)
 }
 
 // appendLogRecord 添加日志记录
-func (db *DB) appendLogRecord(r *data.LogRecord) (*data.LogRecordPos, error) {
+func (db *DB) appendLogRecord(r *LogRecord) (*LogRecordPos, error) {
 
 	if db.activeFile == nil {
 		if err := db.setActiveDataFile(); err != nil {
 			return nil, err
 		}
 	}
-	encRecord, size := data.EncodeLogRecord(r)
+	encRecord, size := EncodeLogRecord(r)
 
 	if db.activeFile.WriteOffset+size > db.options.DataFileSize {
 		if err := db.activeFile.Sync(); err != nil {
@@ -263,7 +261,7 @@ func (db *DB) appendLogRecord(r *data.LogRecord) (*data.LogRecordPos, error) {
 		}
 	}
 
-	pos := &data.LogRecordPos{
+	pos := &LogRecordPos{
 		Fid:    db.activeFile.FileId,
 		Offset: writeOffset,
 	}
@@ -278,7 +276,7 @@ func (db *DB) setActiveDataFile() error {
 		initFleId = db.activeFile.FileId + 1
 	}
 
-	d, err := data.OpenDataFile(db.options.DirPath, initFleId)
+	d, err := OpenDataFile(db.options.DirPath, initFleId)
 	if err != nil {
 		return err
 	}
@@ -297,7 +295,7 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 	var fileIds []uint32
 	// 遍历所有.data文件
 	for _, f := range dirFiles {
-		if !strings.HasSuffix(f.Name(), data.FileSuffix) {
+		if !strings.HasSuffix(f.Name(), FileSuffix) {
 			continue
 		}
 		nameArr := strings.Split(f.Name(), ".")
@@ -314,7 +312,7 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 
 	// 逐个加载
 	for i, fid := range fileIds {
-		dataFile, err := data.OpenDataFile(db.options.DirPath, fid)
+		dataFile, err := OpenDataFile(db.options.DirPath, fid)
 		if err != nil {
 			return nil, err
 		}
@@ -334,7 +332,7 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 		return nil
 	}
 	for _, fid := range fileIds {
-		var dataFile *data.HFile
+		var dataFile *HFile
 		if fid == db.activeFile.FileId {
 			dataFile = db.activeFile
 		} else {
@@ -349,10 +347,10 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 				}
 				return err
 			}
-			if logRecord.Type == data.LogRecordDeleted {
+			if logRecord.Type == LogRecordDeleted {
 				db.index.Delete(logRecord.Key)
 			} else {
-				logRecordPos := &data.LogRecordPos{
+				logRecordPos := &LogRecordPos{
 					Fid:    fid,
 					Offset: offset,
 				}

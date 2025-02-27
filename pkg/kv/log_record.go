@@ -1,4 +1,4 @@
-package data
+package kv
 
 import (
 	"encoding/binary"
@@ -68,10 +68,6 @@ func EncodeLogRecord(r *LogRecord) ([]byte, int64) {
 	binary.LittleEndian.PutUint32(encBytes[:4], crc)
 
 	return encBytes, int64(recordSize)
-}
-
-func DecodeLogRecord(data []byte) *LogRecord {
-	return nil
 }
 
 func decodeLogRecordHeader(data []byte) (*logRecordHeader, int64) {

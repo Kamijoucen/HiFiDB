@@ -1,4 +1,4 @@
-package fio
+package kv
 
 const DataFilePerm = 0644
 

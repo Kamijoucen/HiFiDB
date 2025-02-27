@@ -1,4 +1,4 @@
-package index
+package kv
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"github.com/google/btree"
 
 	"github.com/kamijoucen/hifidb/pkg/cfg"
-	"github.com/kamijoucen/hifidb/pkg/kv/data"
 )
 
 func NewIndex(indexType cfg.IndexType) Indexer {
@@ -23,10 +22,10 @@ func NewIndex(indexType cfg.IndexType) Indexer {
 type Indexer interface {
 
 	// Put 添加key-value，返回是否添加成功
-	Put(key []byte, value *data.LogRecordPos) bool
+	Put(key []byte, value *LogRecordPos) bool
 
 	// Get 获取key对应的value
-	Get(key []byte) *data.LogRecordPos
+	Get(key []byte) *LogRecordPos
 
 	// Delete 删除key，返回是否删除成功
 	Delete(key []byte) bool
@@ -34,21 +33,21 @@ type Indexer interface {
 	// Size 获取索引大小
 	Size() int
 
-	// Iterator 获取迭代器
-	Iterator(reverse bool) Iterator
+	// IndexIterator 获取迭代器
+	IndexIterator(reverse bool) IndexIterator
 }
 
 type Item struct {
 	key []byte
-	pos *data.LogRecordPos
+	pos *LogRecordPos
 }
 
 func (i *Item) Less(bi btree.Item) bool {
 	return bytes.Compare(i.key, bi.(*Item).key) < 0
 }
 
-// Iterator 索引迭代器
-type Iterator interface {
+// IndexIterator 索引迭代器
+type IndexIterator interface {
 
 	// Rewind 回到起始位置
 	Rewind()
@@ -66,7 +65,7 @@ type Iterator interface {
 	Key() []byte
 
 	// Value 返回当前位置value
-	Value() *data.LogRecordPos
+	Value() *LogRecordPos
 
 	// Close 关闭迭代器
 	Close()

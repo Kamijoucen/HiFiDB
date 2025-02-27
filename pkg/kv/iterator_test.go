@@ -4,13 +4,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/kamijoucen/hifidb/pkg/cfg"
-	"github.com/kamijoucen/hifidb/pkg/kv/util"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kamijoucen/hifidb/pkg/cfg"
 )
 
 func TestDB_NewIterator(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-iterator-1")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -24,7 +24,7 @@ func TestDB_NewIterator(t *testing.T) {
 }
 
 func TestDB_Iterator_One_Value(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-iterator-2")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -32,21 +32,21 @@ func TestDB_Iterator_One_Value(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
-	err = db.Put(util.GetTestKey(10), util.GetTestKey(10))
+	err = db.Put(GetTestKey(10), GetTestKey(10))
 	assert.Nil(t, err)
 
 	iterator := db.NewIterator(GetDefaultIteratorOptions())
 	defer iterator.Close()
 	assert.NotNil(t, iterator)
 	assert.Equal(t, true, iterator.Valid())
-	assert.Equal(t, util.GetTestKey(10), iterator.Key())
+	assert.Equal(t, GetTestKey(10), iterator.Key())
 	val, err := iterator.Value()
 	assert.Nil(t, err)
-	assert.Equal(t, util.GetTestKey(10), val)
+	assert.Equal(t, GetTestKey(10), val)
 }
 
 func TestDB_Iterator_Multi_Values(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-iterator-3")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -54,15 +54,15 @@ func TestDB_Iterator_Multi_Values(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
-	err = db.Put([]byte("annde"), util.RandomValue(10))
+	err = db.Put([]byte("annde"), RandomValue(10))
 	assert.Nil(t, err)
-	err = db.Put([]byte("cnedc"), util.RandomValue(10))
+	err = db.Put([]byte("cnedc"), RandomValue(10))
 	assert.Nil(t, err)
-	err = db.Put([]byte("aeeue"), util.RandomValue(10))
+	err = db.Put([]byte("aeeue"), RandomValue(10))
 	assert.Nil(t, err)
-	err = db.Put([]byte("esnue"), util.RandomValue(10))
+	err = db.Put([]byte("esnue"), RandomValue(10))
 	assert.Nil(t, err)
-	err = db.Put([]byte("bnede"), util.RandomValue(10))
+	err = db.Put([]byte("bnede"), RandomValue(10))
 	assert.Nil(t, err)
 
 	// 正向迭代

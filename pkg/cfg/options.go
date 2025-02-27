@@ -66,7 +66,7 @@ func CheckOptions(options *Options) error {
 	return nil
 }
 
-func GetDefaultOptions() *Options {
+func GetDBDefaultOptions() *Options {
 	op, _ := NewOptions(
 		WithDirPath("./data"),
 		WithDataFileSize(1024*1024*1024), // 1GB

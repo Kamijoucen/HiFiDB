@@ -1,4 +1,4 @@
-package data
+package kv
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/kamijoucen/hifidb/pkg/errs"
-	"github.com/kamijoucen/hifidb/pkg/kv/fio"
 )
 
 const FileSuffix = ".data"
@@ -15,14 +14,14 @@ const FileSuffix = ".data"
 type HFile struct {
 	FileId      uint32
 	WriteOffset int64
-	IoManager   fio.IOManager
+	IoManager   IOManager
 }
 
 func OpenDataFile(dirPath string, fileId uint32) (*HFile, error) {
 
 	fileName := filepath.Join(dirPath, fmt.Sprintf("%010d%s", fileId, FileSuffix))
 	// 打开文件
-	ioManager, err := fio.NewIOManager(fileName)
+	ioManager, err := NewIOManager(fileName)
 	if err != nil {
 		return nil, err
 	}

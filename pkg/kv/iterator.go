@@ -4,11 +4,10 @@ import (
 	"bytes"
 
 	"github.com/kamijoucen/hifidb/pkg/errs"
-	"github.com/kamijoucen/hifidb/pkg/kv/index"
 )
 
 type Iterator struct {
-	indexIter index.Iterator
+	indexIter IndexIterator
 	db        *DB
 	options   *IteratorOptions
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
-	"github.com/kamijoucen/hifidb/pkg/kv/util"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -30,7 +29,7 @@ func destroyDB(db *DB) {
 }
 
 func TestOpen(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -40,7 +39,7 @@ func TestOpen(t *testing.T) {
 }
 
 func TestDB_Put(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-put")
 	opts.DirPath = dir
 	opts.DataFileSize = 64 * 1024 * 1024
@@ -51,33 +50,33 @@ func TestDB_Put(t *testing.T) {
 	assert.NotNil(t, db)
 
 	// 1.正常 Put 一条数据
-	err = db.Put(util.GetTestKey(1), util.RandomValue(24))
+	err = db.Put(GetTestKey(1), RandomValue(24))
 	assert.Nil(t, err)
-	val1, err := db.Get(util.GetTestKey(1))
+	val1, err := db.Get(GetTestKey(1))
 	assert.Nil(t, err)
 	assert.NotNil(t, val1)
 
 	// 2.重复 Put key 相同的数据
-	err = db.Put(util.GetTestKey(1), util.RandomValue(24))
+	err = db.Put(GetTestKey(1), RandomValue(24))
 	assert.Nil(t, err)
-	val2, err := db.Get(util.GetTestKey(1))
+	val2, err := db.Get(GetTestKey(1))
 	assert.Nil(t, err)
 	assert.NotNil(t, val2)
 
 	// 3.key 为空
-	err = db.Put(nil, util.RandomValue(24))
+	err = db.Put(nil, RandomValue(24))
 	assert.Equal(t, errs.ErrKeyIsEmpty, err)
 
 	// 4.value 为空
-	err = db.Put(util.GetTestKey(22), nil)
+	err = db.Put(GetTestKey(22), nil)
 	assert.Nil(t, err)
-	val3, err := db.Get(util.GetTestKey(22))
+	val3, err := db.Get(GetTestKey(22))
 	assert.Equal(t, 0, len(val3))
 	assert.Nil(t, err)
 
 	// 5.写到数据文件进行了转换
 	for i := 0; i < 1000000; i++ {
-		err := db.Put(util.GetTestKey(i), util.RandomValue(128))
+		err := db.Put(GetTestKey(i), RandomValue(128))
 		assert.Nil(t, err)
 	}
 	assert.Equal(t, 2, len(db.olderFiles))
@@ -91,16 +90,16 @@ func TestDB_Put(t *testing.T) {
 	defer destroyDB(db2)
 	assert.Nil(t, err)
 	assert.NotNil(t, db2)
-	val4 := util.RandomValue(128)
-	err = db2.Put(util.GetTestKey(55), val4)
+	val4 := RandomValue(128)
+	err = db2.Put(GetTestKey(55), val4)
 	assert.Nil(t, err)
-	val5, err := db2.Get(util.GetTestKey(55))
+	val5, err := db2.Get(GetTestKey(55))
 	assert.Nil(t, err)
 	assert.Equal(t, val4, val5)
 }
 
 func TestDB_Get(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-get")
 	opts.DirPath = dir
 	opts.DataFileSize = 64 * 1024 * 1024
@@ -110,9 +109,9 @@ func TestDB_Get(t *testing.T) {
 	assert.NotNil(t, db)
 
 	// 1.正常读取一条数据
-	err = db.Put(util.GetTestKey(11), util.RandomValue(24))
+	err = db.Put(GetTestKey(11), RandomValue(24))
 	assert.Nil(t, err)
-	val1, err := db.Get(util.GetTestKey(11))
+	val1, err := db.Get(GetTestKey(11))
 	assert.Nil(t, err)
 	assert.NotNil(t, val1)
 
@@ -122,30 +121,30 @@ func TestDB_Get(t *testing.T) {
 	assert.Equal(t, errs.ErrKeyNotFound, err)
 
 	// 3.值被重复 Put 后在读取
-	err = db.Put(util.GetTestKey(22), util.RandomValue(24))
+	err = db.Put(GetTestKey(22), RandomValue(24))
 	assert.Nil(t, err)
-	err = db.Put(util.GetTestKey(22), util.RandomValue(24))
+	err = db.Put(GetTestKey(22), RandomValue(24))
 	assert.Nil(t, err)
-	val3, err := db.Get(util.GetTestKey(22))
+	val3, err := db.Get(GetTestKey(22))
 	assert.Nil(t, err)
 	assert.NotNil(t, val3)
 
 	// 4.值被删除后再 Get
-	err = db.Put(util.GetTestKey(33), util.RandomValue(24))
+	err = db.Put(GetTestKey(33), RandomValue(24))
 	assert.Nil(t, err)
-	err = db.Delete(util.GetTestKey(33))
+	err = db.Delete(GetTestKey(33))
 	assert.Nil(t, err)
-	val4, err := db.Get(util.GetTestKey(33))
+	val4, err := db.Get(GetTestKey(33))
 	assert.Equal(t, 0, len(val4))
 	assert.Equal(t, errs.ErrKeyNotFound, err)
 
 	// 5.转换为了旧的数据文件，从旧的数据文件上获取 value
 	for i := 100; i < 1000000; i++ {
-		err := db.Put(util.GetTestKey(i), util.RandomValue(128))
+		err := db.Put(GetTestKey(i), RandomValue(128))
 		assert.Nil(t, err)
 	}
 	assert.Equal(t, 2, len(db.olderFiles))
-	val5, err := db.Get(util.GetTestKey(101))
+	val5, err := db.Get(GetTestKey(101))
 	assert.Nil(t, err)
 	assert.NotNil(t, val5)
 
@@ -159,23 +158,23 @@ func TestDB_Get(t *testing.T) {
 		panic(err)
 	}
 	defer destroyDB(db2)
-	val6, err := db2.Get(util.GetTestKey(11))
+	val6, err := db2.Get(GetTestKey(11))
 	assert.Nil(t, err)
 	assert.NotNil(t, val6)
 	assert.Equal(t, val1, val6)
 
-	val7, err := db2.Get(util.GetTestKey(22))
+	val7, err := db2.Get(GetTestKey(22))
 	assert.Nil(t, err)
 	assert.NotNil(t, val7)
 	assert.Equal(t, val3, val7)
 
-	val8, err := db2.Get(util.GetTestKey(33))
+	val8, err := db2.Get(GetTestKey(33))
 	assert.Equal(t, 0, len(val8))
 	assert.Equal(t, errs.ErrKeyNotFound, err)
 }
 
 func TestDB_Delete(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 
 	dir, _ := os.MkdirTemp("", "bitcask-go-delete")
 	opts.DirPath = dir
@@ -186,11 +185,11 @@ func TestDB_Delete(t *testing.T) {
 	assert.NotNil(t, db)
 
 	// 1.正常删除一个存在的 key
-	err = db.Put(util.GetTestKey(11), util.RandomValue(128))
+	err = db.Put(GetTestKey(11), RandomValue(128))
 	assert.Nil(t, err)
-	err = db.Delete(util.GetTestKey(11))
+	err = db.Delete(GetTestKey(11))
 	assert.Nil(t, err)
-	_, err = db.Get(util.GetTestKey(11))
+	_, err = db.Get(GetTestKey(11))
 	assert.Equal(t, errs.ErrKeyNotFound, err)
 
 	// 2.删除一个不存在的 key
@@ -202,14 +201,14 @@ func TestDB_Delete(t *testing.T) {
 	assert.Equal(t, errs.ErrKeyIsEmpty, err)
 
 	// 4.值被删除之后重新 Put
-	err = db.Put(util.GetTestKey(22), util.RandomValue(128))
+	err = db.Put(GetTestKey(22), RandomValue(128))
 	assert.Nil(t, err)
-	err = db.Delete(util.GetTestKey(22))
+	err = db.Delete(GetTestKey(22))
 	assert.Nil(t, err)
 
-	err = db.Put(util.GetTestKey(22), util.RandomValue(128))
+	err = db.Put(GetTestKey(22), RandomValue(128))
 	assert.Nil(t, err)
-	val1, err := db.Get(util.GetTestKey(22))
+	val1, err := db.Get(GetTestKey(22))
 	assert.NotNil(t, val1)
 	assert.Nil(t, err)
 
@@ -224,16 +223,16 @@ func TestDB_Delete(t *testing.T) {
 	}
 
 	defer destroyDB(db2)
-	_, err = db2.Get(util.GetTestKey(11))
+	_, err = db2.Get(GetTestKey(11))
 	assert.Equal(t, errs.ErrKeyNotFound, err)
 
-	val2, err := db2.Get(util.GetTestKey(22))
+	val2, err := db2.Get(GetTestKey(22))
 	assert.Nil(t, err)
 	assert.Equal(t, val1, val2)
 }
 
 func TestDB_ListKeys(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-list-keys")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -246,17 +245,17 @@ func TestDB_ListKeys(t *testing.T) {
 	assert.Equal(t, 0, len(keys1))
 
 	// 只有一条数据
-	err = db.Put(util.GetTestKey(11), util.RandomValue(20))
+	err = db.Put(GetTestKey(11), RandomValue(20))
 	assert.Nil(t, err)
 	keys2 := db.ListKeys()
 	assert.Equal(t, 1, len(keys2))
 
 	// 有多条数据
-	err = db.Put(util.GetTestKey(22), util.RandomValue(20))
+	err = db.Put(GetTestKey(22), RandomValue(20))
 	assert.Nil(t, err)
-	err = db.Put(util.GetTestKey(33), util.RandomValue(20))
+	err = db.Put(GetTestKey(33), RandomValue(20))
 	assert.Nil(t, err)
-	err = db.Put(util.GetTestKey(44), util.RandomValue(20))
+	err = db.Put(GetTestKey(44), RandomValue(20))
 	assert.Nil(t, err)
 
 	keys3 := db.ListKeys()
@@ -267,7 +266,7 @@ func TestDB_ListKeys(t *testing.T) {
 }
 
 func TestDB_Fold(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-fold")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -275,13 +274,13 @@ func TestDB_Fold(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
-	err = db.Put(util.GetTestKey(11), util.RandomValue(20))
+	err = db.Put(GetTestKey(11), RandomValue(20))
 	assert.Nil(t, err)
-	err = db.Put(util.GetTestKey(22), util.RandomValue(20))
+	err = db.Put(GetTestKey(22), RandomValue(20))
 	assert.Nil(t, err)
-	err = db.Put(util.GetTestKey(33), util.RandomValue(20))
+	err = db.Put(GetTestKey(33), RandomValue(20))
 	assert.Nil(t, err)
-	err = db.Put(util.GetTestKey(44), util.RandomValue(20))
+	err = db.Put(GetTestKey(44), RandomValue(20))
 	assert.Nil(t, err)
 
 	err = db.Fold(func(key []byte, value []byte) bool {
@@ -293,7 +292,7 @@ func TestDB_Fold(t *testing.T) {
 }
 
 func TestDB_Close(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-close")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -301,12 +300,12 @@ func TestDB_Close(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
-	err = db.Put(util.GetTestKey(11), util.RandomValue(20))
+	err = db.Put(GetTestKey(11), RandomValue(20))
 	assert.Nil(t, err)
 }
 
 func TestDB_Sync(t *testing.T) {
-	opts := cfg.GetDefaultOptions()
+	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-sync")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -314,7 +313,7 @@ func TestDB_Sync(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
-	err = db.Put(util.GetTestKey(11), util.RandomValue(20))
+	err = db.Put(GetTestKey(11), RandomValue(20))
 	assert.Nil(t, err)
 
 	err = db.Sync()

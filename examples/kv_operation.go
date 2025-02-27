@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	options := cfg.GetDefaultOptions()
+	options := cfg.GetDBDefaultOptions()
 
 	db, err := kv.Open(options)
 	if err != nil {

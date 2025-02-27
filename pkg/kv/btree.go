@@ -1,4 +1,4 @@
-package index
+package kv
 
 import (
 	"bytes"
@@ -6,8 +6,6 @@ import (
 	"sync"
 
 	"github.com/google/btree"
-
-	"github.com/kamijoucen/hifidb/pkg/kv/data"
 )
 
 type BTreeIndex struct {
@@ -22,7 +20,7 @@ func NewBTreeIndex() *BTreeIndex {
 	}
 }
 
-func (b *BTreeIndex) Put(key []byte, value *data.LogRecordPos) bool {
+func (b *BTreeIndex) Put(key []byte, value *LogRecordPos) bool {
 	it := &Item{
 		key: key,
 		pos: value,
@@ -33,7 +31,7 @@ func (b *BTreeIndex) Put(key []byte, value *data.LogRecordPos) bool {
 	return true
 }
 
-func (b *BTreeIndex) Get(key []byte) *data.LogRecordPos {
+func (b *BTreeIndex) Get(key []byte) *LogRecordPos {
 	it := &Item{
 		key: key,
 	}
@@ -60,7 +58,7 @@ func (b *BTreeIndex) Size() int {
 	return b.tree.Len()
 }
 
-func (b *BTreeIndex) Iterator(reverse bool) Iterator {
+func (b *BTreeIndex) IndexIterator(reverse bool) IndexIterator {
 	if b.tree == nil {
 		return nil
 	}
@@ -133,7 +131,7 @@ func (i *btreeIterator) Key() []byte {
 }
 
 // Value 返回当前位置value
-func (i *btreeIterator) Value() *data.LogRecordPos {
+func (i *btreeIterator) Value() *LogRecordPos {
 	return i.values[i.curIndex].pos
 }
 
