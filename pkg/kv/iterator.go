@@ -12,6 +12,16 @@ type Iterator struct {
 	options   *IteratorOptions
 }
 
+// NewIterator 创建迭代器
+func (db *DB) NewIterator(opts *IteratorOptions) *Iterator {
+	indexIter := db.index.IndexIterator(opts.Reverse)
+	return &Iterator{
+		indexIter: indexIter,
+		db:        db,
+		options:   opts,
+	}
+}
+
 // Rewind 回到起始位置
 func (it *Iterator) Rewind() {
 	it.indexIter.Rewind()

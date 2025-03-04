@@ -10,6 +10,7 @@ type LogRecordType byte
 const (
 	LogRecordNormal LogRecordType = iota
 	LogRecordDeleted
+	LogRecordTxnFinished
 )
 
 const (

@@ -9,4 +9,5 @@ var (
 	ErrDataFileNotFound  = errors.New("data file not found")
 	ErrDataDirCorrupted  = errors.New("data dir corrupted")
 	ErrInvalidCRC        = errors.New("invalid crc")
+	ErrExceedMaxFileSize = errors.New("exceed max file size")
 )

@@ -18,6 +18,7 @@ type DB struct {
 	activeFile *HFile
 	olderFiles map[uint32]*HFile
 	index      Indexer
+	seqNo      uint64
 }
 
 // Open 打开数据库
@@ -63,7 +64,7 @@ func (db *DB) Put(key, value []byte) error {
 	}
 
 	logRecord := &LogRecord{
-		Key:   key,
+		Key:   logRecordKeyWithSeq(key, nonTransactionSeqNo),
 		Value: value,
 		Type:  LogRecordNormal,
 	}
@@ -109,7 +110,7 @@ func (db *DB) Delete(key []byte) error {
 	}
 
 	logRecord := &LogRecord{
-		Key:  key,
+		Key:  logRecordKeyWithSeq(key, nonTransactionSeqNo),
 		Type: LogRecordDeleted,
 	}
 
@@ -190,16 +191,7 @@ func (db *DB) Sync() error {
 	return db.activeFile.Sync()
 }
 
-// NewIterator 创建迭代器
-func (db *DB) NewIterator(opts *IteratorOptions) *Iterator {
-	indexIter := db.index.IndexIterator(opts.Reverse)
-	return &Iterator{
-		indexIter: indexIter,
-		db:        db,
-		options:   opts,
-	}
-}
-
+// getValueByPosition 根据位置获取数据
 func (db *DB) getValueByPosition(pos *LogRecordPos) ([]byte, error) {
 	var d *HFile
 	if db.activeFile.FileId == pos.Fid {
@@ -328,9 +320,23 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 
 // loadIndexFromDataFiles 从数据文件加载索引
 func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
+
 	if len(fileIds) == 0 {
 		return nil
 	}
+
+	updateIndex := func(key []byte, recordType LogRecordType, pos *LogRecordPos) {
+		var ok bool
+		if recordType == LogRecordDeleted {
+			ok = db.index.Delete(key)
+		} else {
+			ok = db.index.Put(key, pos)
+		}
+		if !ok {
+			panic("index update failed")
+		}
+	}
+
 	for _, fid := range fileIds {
 		var dataFile *HFile
 		if fid == db.activeFile.FileId {
@@ -338,26 +344,35 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 		} else {
 			dataFile = db.olderFiles[fid]
 		}
+
 		var offset int64 = 0
 		for {
+
+			// 构造内存位置索引
 			logRecord, rSize, err := dataFile.ReadLogRecord(offset)
+
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
 				return err
 			}
-			if logRecord.Type == LogRecordDeleted {
-				db.index.Delete(logRecord.Key)
-			} else {
-				logRecordPos := &LogRecordPos{
-					Fid:    fid,
-					Offset: offset,
-				}
-				db.index.Put(logRecord.Key, logRecordPos)
+
+			logRecordPos := &LogRecordPos{
+				Fid:    fid,
+				Offset: offset,
 			}
+
+			realKey, seqNo := parseLogRecordKey(logRecord.Key)
+			if seqNo == nonTransactionSeqNo {
+				updateIndex(realKey, logRecord.Type, logRecordPos)
+			} else {
+				// TODO 如果事务提交才更新索引
+			}
+
 			offset += rSize
 		}
+
 		// 如果是活跃文件，需要更新offset
 		if fid == db.activeFile.FileId {
 			db.activeFile.WriteOffset = offset
