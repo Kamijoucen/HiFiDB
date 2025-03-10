@@ -3,10 +3,11 @@ package kv
 import (
 	"io"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	"slices"
 
 	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
@@ -178,6 +179,10 @@ func (db *DB) Close() error {
 			return err
 		}
 	}
+
+	// 清空映射
+	db.activeFile = nil
+	db.olderFiles = nil
 	return nil
 }
 
@@ -298,9 +303,7 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 		fileIds = append(fileIds, uint32(fid))
 	}
 	// 排序
-	sort.Slice(fileIds, func(i, j int) bool {
-		return fileIds[i] < fileIds[j]
-	})
+	slices.Sort(fileIds)
 
 	// 逐个加载
 	for i, fid := range fileIds {
@@ -337,6 +340,10 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 		}
 	}
 
+	// 事务数据
+	transactionRecords := make(map[uint64][]*TransactionRecord)
+	var currentSeqNo = nonTransactionSeqNo
+
 	for _, fid := range fileIds {
 		var dataFile *HFile
 		if fid == db.activeFile.FileId {
@@ -347,7 +354,6 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 
 		var offset int64 = 0
 		for {
-
 			// 构造内存位置索引
 			logRecord, rSize, err := dataFile.ReadLogRecord(offset)
 
@@ -367,16 +373,33 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 			if seqNo == nonTransactionSeqNo {
 				updateIndex(realKey, logRecord.Type, logRecordPos)
 			} else {
-				// TODO 如果事务提交才更新索引
+				// 如果事务提交才更新索引
+				if logRecord.Type == LogRecordTxnFinished {
+					for _, txnRecord := range transactionRecords[seqNo] {
+						updateIndex(txnRecord.Record.Key, txnRecord.Record.Type, txnRecord.Pos)
+					}
+					delete(transactionRecords, seqNo)
+				} else { // 未读到事务提交标记，缓存事务数据
+					logRecord.Key = realKey
+					transactionRecords[seqNo] = append(transactionRecords[seqNo], &TransactionRecord{
+						Record: logRecord,
+						Pos:    logRecordPos,
+					})
+				}
 			}
-
+			// 更新事务ID
+			if seqNo > currentSeqNo {
+				currentSeqNo = seqNo
+			}
+			// 更新offset
 			offset += rSize
 		}
-
 		// 如果是活跃文件，需要更新offset
 		if fid == db.activeFile.FileId {
 			db.activeFile.WriteOffset = offset
 		}
+		// 更新事务ID
+		db.seqNo = currentSeqNo
 	}
 	return nil
 }

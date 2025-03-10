@@ -62,6 +62,10 @@ func NewWriteBatchOptions(opts ...func(*WriteBatchOptions)) *WriteBatchOptions {
 	return options
 }
 
+func GetDefaultWriteBatchOptions() *WriteBatchOptions {
+	return NewWriteBatchOptions(WithMaxBatchSize(10000), WithEachSyncWrites(true))
+}
+
 func GetDefaultIteratorOptions() *IteratorOptions {
 	return NewIteratorOptions()
 }

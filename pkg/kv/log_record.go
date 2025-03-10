@@ -19,17 +19,26 @@ const (
 	maxLogRecordHeaderSize int64 = 4 + 1 + binary.MaxVarintLen32*2
 )
 
+// LogRecord 日志记录
 type LogRecord struct {
 	Key   []byte
 	Value []byte
 	Type  LogRecordType
 }
 
+// LogRecordPos 日志记录位置
 type LogRecordPos struct {
 	Fid    uint32
 	Offset int64
 }
 
+// TransactionRecord 事务记录
+type TransactionRecord struct {
+	Record *LogRecord
+	Pos    *LogRecordPos
+}
+
+// logRecordHeader 日志记录头部
 type logRecordHeader struct {
 	crc        uint32
 	recordType LogRecordType
@@ -37,6 +46,7 @@ type logRecordHeader struct {
 	valueSize  uint32
 }
 
+// EncodeLogRecord 编码日志记录
 func EncodeLogRecord(r *LogRecord) ([]byte, int64) {
 	// TODO 复用
 	// header buf
@@ -71,6 +81,7 @@ func EncodeLogRecord(r *LogRecord) ([]byte, int64) {
 	return encBytes, int64(recordSize)
 }
 
+// decodeLogRecordHeader 解码日志记录头部
 func decodeLogRecordHeader(data []byte) (*logRecordHeader, int64) {
 	if len(data) < 4 {
 		return nil, 0
@@ -103,6 +114,7 @@ func decodeLogRecordHeader(data []byte) (*logRecordHeader, int64) {
 	return logHeader, int64(index)
 }
 
+// getLogRecordCRC 获取日志记录的crc
 func getLogRecordCRC(logRecord *LogRecord, logRecordHeaderBytes []byte) uint32 {
 	if logRecord == nil {
 		return 0

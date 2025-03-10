@@ -146,9 +146,7 @@ func (wb *WriteBatch) Commit() error {
 
 // logRecordKeyWithSeq 生成带事务ID的key
 func logRecordKeyWithSeq(key []byte, seqNO uint64) []byte {
-
 	// TODO 复用
-
 	// 变长存储事务ID
 	seq := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(seq[:], seqNO)
