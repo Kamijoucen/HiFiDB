@@ -10,4 +10,5 @@ var (
 	ErrDataDirCorrupted  = errors.New("data dir corrupted")
 	ErrInvalidCRC        = errors.New("invalid crc")
 	ErrExceedMaxFileSize = errors.New("exceed max file size")
+	ErrMergeIsProgress   = errors.New("merge is progress")
 )

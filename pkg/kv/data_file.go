@@ -11,13 +11,13 @@ import (
 
 const FileSuffix = ".data"
 
-type HFile struct {
+type DataFile struct {
 	FileId      uint32
 	WriteOffset int64
 	IoManager   IOManager
 }
 
-func OpenDataFile(dirPath string, fileId uint32) (*HFile, error) {
+func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
 
 	fileName := filepath.Join(dirPath, fmt.Sprintf("%010d%s", fileId, FileSuffix))
 	// 打开文件
@@ -25,18 +25,18 @@ func OpenDataFile(dirPath string, fileId uint32) (*HFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &HFile{
+	return &DataFile{
 		FileId:      fileId,
 		WriteOffset: 0,
 		IoManager:   ioManager,
 	}, nil
 }
 
-func (d *HFile) Sync() error {
+func (d *DataFile) Sync() error {
 	return d.IoManager.Sync()
 }
 
-func (d *HFile) Write(b []byte) error {
+func (d *DataFile) Write(b []byte) error {
 	_, err := d.IoManager.Write(b)
 	if err != nil {
 		return err
@@ -45,12 +45,12 @@ func (d *HFile) Write(b []byte) error {
 	return nil
 }
 
-func (d *HFile) Close() error {
+func (d *DataFile) Close() error {
 	return d.IoManager.Close()
 }
 
 // ReadLogRecord 读取日志记录
-func (d *HFile) ReadLogRecord(off int64) (*LogRecord, int64, error) {
+func (d *DataFile) ReadLogRecord(off int64) (*LogRecord, int64, error) {
 
 	var fileSize, err = d.IoManager.Size()
 	if err != nil {
@@ -98,7 +98,7 @@ func (d *HFile) ReadLogRecord(off int64) (*LogRecord, int64, error) {
 }
 
 // readNBytes
-func (d *HFile) readNBytes(off int64, n int64) ([]byte, error) {
+func (d *DataFile) readNBytes(off int64, n int64) ([]byte, error) {
 	// TODO 复用 buf
 	bf := make([]byte, n)
 	_, err := d.IoManager.Read(bf, off)

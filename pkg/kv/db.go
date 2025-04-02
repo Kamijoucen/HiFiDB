@@ -16,10 +16,11 @@ import (
 type DB struct {
 	options    *cfg.Options
 	lock       *sync.RWMutex
-	activeFile *HFile
-	olderFiles map[uint32]*HFile
+	activeFile *DataFile
+	olderFiles map[uint32]*DataFile
 	index      Indexer
 	seqNo      uint64
+	isMerging  bool
 }
 
 // Open 打开数据库
@@ -40,7 +41,7 @@ func Open(options *cfg.Options) (*DB, error) {
 	db := &DB{
 		options:    options,
 		lock:       &sync.RWMutex{},
-		olderFiles: map[uint32]*HFile{},
+		olderFiles: map[uint32]*DataFile{},
 		index:      NewIndex(cfg.BTree),
 	}
 
@@ -198,7 +199,7 @@ func (db *DB) Sync() error {
 
 // getValueByPosition 根据位置获取数据
 func (db *DB) getValueByPosition(pos *LogRecordPos) ([]byte, error) {
-	var d *HFile
+	var d *DataFile
 	if db.activeFile.FileId == pos.Fid {
 		d = db.activeFile
 	} else {
@@ -345,7 +346,7 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 	var currentSeqNo = nonTransactionSeqNo
 
 	for _, fid := range fileIds {
-		var dataFile *HFile
+		var dataFile *DataFile
 		if fid == db.activeFile.FileId {
 			dataFile = db.activeFile
 		} else {
