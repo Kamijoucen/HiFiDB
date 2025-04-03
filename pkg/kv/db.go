@@ -293,7 +293,7 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 	var fileIds []uint32
 	// 遍历所有.data文件
 	for _, f := range dirFiles {
-		if !strings.HasSuffix(f.Name(), FileSuffix) {
+		if !strings.HasSuffix(f.Name(), DataFileSuffix) {
 			continue
 		}
 		nameArr := strings.Split(f.Name(), ".")

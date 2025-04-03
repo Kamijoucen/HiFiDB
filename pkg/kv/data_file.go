@@ -9,7 +9,11 @@ import (
 	"github.com/kamijoucen/hifidb/pkg/errs"
 )
 
-const FileSuffix = ".data"
+const (
+	DataFileSuffix        = ".data"
+	HintFileName          = "hint-index"
+	MergeFinishedFileName = "merge-finished"
+)
 
 type DataFile struct {
 	FileId      uint32
@@ -17,10 +21,26 @@ type DataFile struct {
 	IoManager   IOManager
 }
 
+// OpenDataFile 打开数据文件
 func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, fmt.Sprintf("%010d%s", fileId, DataFileSuffix))
+	return newDataFile(fileName, fileId)
+}
 
-	fileName := filepath.Join(dirPath, fmt.Sprintf("%010d%s", fileId, FileSuffix))
-	// 打开文件
+// OpenHintFile 打开hint文件
+func OpenHintFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, HintFileName)
+	return newDataFile(fileName, 0)
+}
+
+// OpenMergeFinishedFile 打开合并完成的标识文件
+func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, MergeFinishedFileName)
+	return newDataFile(fileName, 0)
+}
+
+// newDataFile 创建数据文件
+func newDataFile(fileName string, fileId uint32) (*DataFile, error) {
 	ioManager, err := NewIOManager(fileName)
 	if err != nil {
 		return nil, err
@@ -32,10 +52,12 @@ func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
 	}, nil
 }
 
+// Sync 同步数据
 func (d *DataFile) Sync() error {
 	return d.IoManager.Sync()
 }
 
+// Write 写入数据
 func (d *DataFile) Write(b []byte) error {
 	_, err := d.IoManager.Write(b)
 	if err != nil {
@@ -45,6 +67,18 @@ func (d *DataFile) Write(b []byte) error {
 	return nil
 }
 
+// WriteHintRecord 写入hint记录
+func (d *DataFile) WriteHintRecord(key []byte, pos *LogRecordPos) error {
+	record := &LogRecord{
+		Key:   key,
+		Value: EncodeLogRecordPos(pos),
+	}
+	encRecord, _ := EncodeLogRecord(record)
+	return d.Write(encRecord)
+
+}
+
+// WriteAt 写入数据
 func (d *DataFile) Close() error {
 	return d.IoManager.Close()
 }
@@ -97,7 +131,8 @@ func (d *DataFile) ReadLogRecord(off int64) (*LogRecord, int64, error) {
 	return logRecord, headerSize + keySize + valueSize, nil
 }
 
-// readNBytes
+// readNBytes 从文件中读取n个字节
+// 读取数据时，可能会发生io.EOF错误
 func (d *DataFile) readNBytes(off int64, n int64) ([]byte, error) {
 	// TODO 复用 buf
 	bf := make([]byte, n)
