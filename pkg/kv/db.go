@@ -3,6 +3,7 @@ package kv
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,9 +46,19 @@ func Open(options *cfg.Options) (*DB, error) {
 		index:      NewIndex(cfg.BTree),
 	}
 
+	// 加载merge文件
+	if err := db.loadMergeFiles(); err != nil {
+		return nil, err
+	}
+
 	// 加载数据文件
 	fileIds, err := db.loadDataFiles()
 	if err != nil {
+		return nil, err
+	}
+
+	// 从hint文件加载索引
+	if err := db.loadIndexFromHintFile(); err != nil {
 		return nil, err
 	}
 
@@ -329,6 +340,18 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 		return nil
 	}
 
+	// 检查是否发生过merge
+	hasMerge, nonMergeFileId := false, uint32(0)
+	mergeFinishedFileName := filepath.Join(db.options.DirPath, MergeFinishedFileName)
+	if _, err := os.Stat(mergeFinishedFileName); err == nil {
+		fid, err := db.getNonMergeFileId(db.options.DirPath)
+		if err != nil {
+			return err
+		}
+		hasMerge = true
+		nonMergeFileId = fid
+	}
+
 	updateIndex := func(key []byte, recordType LogRecordType, pos *LogRecordPos) {
 		var ok bool
 		if recordType == LogRecordDeleted {
@@ -346,6 +369,11 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 	var currentSeqNo = nonTransactionSeqNo
 
 	for _, fid := range fileIds {
+
+		// 如果是merge完成的文件，跳过
+		if hasMerge && fid < nonMergeFileId {
+			continue
+		}
 		var dataFile *DataFile
 		if fid == db.activeFile.FileId {
 			dataFile = db.activeFile
