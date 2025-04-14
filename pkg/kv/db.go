@@ -42,7 +42,7 @@ func Open(options *cfg.Options) (*DB, error) {
 		options:    options,
 		lock:       &sync.RWMutex{},
 		olderFiles: map[uint32]*DataFile{},
-		index:      NewIndex(cfg.BTree),
+		index:      NewIndex(cfg.BTree, options.DirPath),
 	}
 
 	// 加载数据文件

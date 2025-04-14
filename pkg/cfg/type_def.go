@@ -8,4 +8,7 @@ const (
 
 	// ART ART index
 	ART
+
+	// BPTree B+Tree index
+	BPTree
 )
