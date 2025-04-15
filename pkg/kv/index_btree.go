@@ -68,6 +68,15 @@ func (b *BTreeIndex) IndexIterator(reverse bool) IndexIterator {
 	return newBTreeIterator(b.tree, reverse)
 }
 
+func (b *BTreeIndex) Close() error {
+	if b.tree != nil {
+		b.tree.Clear(false)
+	}
+	b.tree = nil
+	b.lock = nil
+	return nil
+}
+
 // BTree 索引迭代器
 type btreeIterator struct {
 	curIndex int     // 当前遍历的下表位置

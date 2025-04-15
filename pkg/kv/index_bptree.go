@@ -100,7 +100,79 @@ func (i *BPlusTree) Size() int {
 	return size
 }
 
+// Close 关闭索引
+func (i *BPlusTree) Close() error {
+	return i.tree.Close()
+}
+
 // IndexIterator 获取迭代器
 func (i *BPlusTree) IndexIterator(reverse bool) IndexIterator {
-	return nil
+	return newBpTreeIterator(i.tree, reverse)
+}
+
+// bpTreeIterator B+树迭代器
+type bpTreeIterator struct {
+	currentKey   []byte
+	currentValue []byte
+	tx           *bbolt.Tx
+	cursor       *bbolt.Cursor
+	reverse      bool
+}
+
+// newBpTreeIterator 创建B+树迭代器
+func newBpTreeIterator(tree *bbolt.DB, reverse bool) *bpTreeIterator {
+	tx, err := tree.Begin(false)
+	if err != nil {
+		panic(err)
+	}
+	bi := &bpTreeIterator{
+		tx:      tx,
+		cursor:  tx.Bucket(indexBucketName).Cursor(),
+		reverse: reverse,
+	}
+	bi.Rewind()
+	return bi
+}
+
+// Rewind 回到起始位置
+func (bi *bpTreeIterator) Rewind() {
+	if bi.reverse {
+		bi.currentKey, bi.currentValue = bi.cursor.Last()
+	} else {
+		bi.currentKey, bi.currentValue = bi.cursor.First()
+	}
+}
+
+// Seek 移动第一个大于等于key的位置
+func (bi *bpTreeIterator) Seek(key []byte) {
+	bi.currentKey, bi.currentValue = bi.cursor.Seek(key)
+}
+
+// Next 移动到下一个key
+func (bi *bpTreeIterator) Next() {
+	if bi.reverse {
+		bi.currentKey, bi.currentValue = bi.cursor.Prev()
+	} else {
+		bi.currentKey, bi.currentValue = bi.cursor.Next()
+	}
+}
+
+// Valid 是否有效，即是否还有下一个key，用于退出循环
+func (bi *bpTreeIterator) Valid() bool {
+	return bi.currentKey != nil
+}
+
+// Key 返回当前位置key
+func (bi *bpTreeIterator) Key() []byte {
+	return bi.currentKey
+}
+
+// Value 返回当前位置value
+func (bi *bpTreeIterator) Value() *LogRecordPos {
+	return DecodeLogRecordPos(bi.currentValue)
+}
+
+// Close 关闭迭代器
+func (bi *bpTreeIterator) Close() {
+	_ = bi.tx.Rollback()
 }

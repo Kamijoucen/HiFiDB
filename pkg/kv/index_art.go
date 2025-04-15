@@ -67,6 +67,12 @@ func (a *ArTree) IndexIterator(reverse bool) IndexIterator {
 	return newArTreeIterator(a.tree, reverse)
 }
 
+func (a *ArTree) Close() error {
+	a.tree = nil
+	a.lock = nil
+	return nil
+}
+
 // BTree 索引迭代器
 type arTreeIterator struct {
 	curIndex int     // 当前遍历的下表位置

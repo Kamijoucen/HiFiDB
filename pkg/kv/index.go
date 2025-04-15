@@ -37,6 +37,8 @@ type Indexer interface {
 
 	// IndexIterator 获取迭代器
 	IndexIterator(reverse bool) IndexIterator
+
+	Close() error
 }
 
 type Item struct {
