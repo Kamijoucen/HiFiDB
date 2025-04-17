@@ -76,7 +76,7 @@ func (db *DB) Merge() error {
 	// 创建新的用的merge的db实例
 	mergeOptions := *db.options
 	mergeOptions.DirPath = mergePath
-	mergeOptions.EachSyncWrites = false
+	mergeOptions.SyncWrites = false
 
 	mergeDB, err := Open(&mergeOptions)
 	if err != nil {
@@ -187,6 +187,10 @@ func (db *DB) loadMergeFiles() error {
 		if entry.Name() == MergeFinishedFileName {
 			mergeFinished = true
 			break
+		}
+		if entry.Name() == SeqNoFileName {
+			// seqNo文件不需要merge
+			continue
 		}
 		mergeFileNames = append(mergeFileNames, entry.Name())
 	}

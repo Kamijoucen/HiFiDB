@@ -14,8 +14,12 @@ type BPlusTree struct {
 	tree *bbolt.DB
 }
 
-func NewBPlusTree(dirPath string) *BPlusTree {
-	bptree, err := bbolt.Open(filepath.Join(dirPath, bpTreeIndexFileName), 0644, nil)
+func NewBPlusTree(dirPath string, syncWrites bool) *BPlusTree {
+
+	opts := bbolt.DefaultOptions
+	opts.NoSync = !syncWrites
+
+	bptree, err := bbolt.Open(filepath.Join(dirPath, bpTreeIndexFileName), 0644, opts)
 	if err != nil {
 		panic(err)
 	}

@@ -8,14 +8,14 @@ import (
 	"github.com/kamijoucen/hifidb/pkg/cfg"
 )
 
-func NewIndex(indexType cfg.IndexType, dirPath string) Indexer {
+func NewIndex(indexType cfg.IndexType, dirPath string, syncWrites bool) Indexer {
 	switch indexType {
 	case cfg.BTree:
 		return NewBTreeIndex()
 	case cfg.ART:
 		return NewArTree()
 	case cfg.BPTree:
-		return NewBPlusTree(dirPath)
+		return NewBPlusTree(dirPath, syncWrites)
 	default:
 		panic("unknown index type")
 	}

@@ -21,7 +21,7 @@ func TestNewBPlusTree_Put(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -47,7 +47,7 @@ func TestBPlusTree_Get(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -81,7 +81,7 @@ func TestBPlusTree_Delete(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -111,7 +111,7 @@ func TestBPlusTree_Size(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -141,7 +141,7 @@ func TestBPlusTree_PutOverwrite(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -172,7 +172,7 @@ func TestBPlusTree_DeleteAndReAdd(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -201,7 +201,7 @@ func TestBPlusTree_RepeatedDelete(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -229,14 +229,14 @@ func TestBPlusTree_Persistence(t *testing.T) {
 		}
 	}()
 
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	tree.Put([]byte("key1"), &LogRecordPos{1, 11})
 	tree.Put([]byte("key2"), &LogRecordPos{2, 22})
 	if err := tree.Close(); err != nil {
 		t.Fatalf("failed to close BPlusTree: %v", err)
 	}
 
-	tree = NewBPlusTree(path)
+	tree = NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -263,7 +263,7 @@ func TestBPlusTree_IteratorForward(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -303,7 +303,7 @@ func TestBPlusTree_IteratorReverse(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -344,7 +344,7 @@ func TestBPlusTree_IteratorEmpty(t *testing.T) {
 			t.Errorf("failed to remove test directory: %v", err)
 		}
 	}()
-	tree := NewBPlusTree(path)
+	tree := NewBPlusTree(path, true)
 	defer func() {
 		if err := tree.Close(); err != nil {
 			t.Errorf("failed to close BPlusTree: %v", err)
@@ -362,45 +362,40 @@ func TestBPlusTree_IteratorEmpty(t *testing.T) {
 	revIter.Close()
 }
 
-// TestBPlusTree_IteratorAfterModification 测试迭代器在树被修改后的行为。
+// TestBPlusTree_IteratorAfterModification 测试：修改树结构后新建迭代器，验证新状态。
 func TestBPlusTree_IteratorAfterModification(t *testing.T) {
 	path := filepath.Join("tmp")
-	if err := os.MkdirAll(path, 0755); err != nil {
-		t.Fatalf("failed to create test directory: %v", err)
-	}
-	defer func() {
-		if err := os.RemoveAll(path); err != nil {
-			t.Errorf("failed to remove test directory: %v", err)
-		}
-	}()
-	tree := NewBPlusTree(path)
-	defer func() {
-		if err := tree.Close(); err != nil {
-			t.Errorf("failed to close BPlusTree: %v", err)
-		}
-	}()
+	os.MkdirAll(path, 0755)
+	defer os.RemoveAll(path)
+	tree := NewBPlusTree(path, true)
+	defer tree.Close()
 
-	// 插入初始键值对
 	tree.Put([]byte("key1"), &LogRecordPos{1, 11})
 	tree.Put([]byte("key2"), &LogRecordPos{2, 22})
 
+	// 先遍历并关闭迭代器
 	iter := tree.IndexIterator(false)
 	iter.Rewind()
-	assert.True(t, iter.Valid())
-	assert.Equal(t, []byte("key1"), iter.Key())
-
-	// 修改树结构
-	tree.Put([]byte("key3"), &LogRecordPos{3, 33})
-	tree.Delete([]byte("key1"))
-
-	// 迭代器应保持原有状态
 	assert.True(t, iter.Valid())
 	assert.Equal(t, []byte("key1"), iter.Key())
 	iter.Next()
 	assert.True(t, iter.Valid())
 	assert.Equal(t, []byte("key2"), iter.Key())
-	iter.Next()
-	assert.False(t, iter.Valid())
-
 	iter.Close()
+
+	// 关闭迭代器后再修改树结构
+	tree.Put([]byte("key3"), &LogRecordPos{3, 33})
+	tree.Delete([]byte("key1"))
+
+	// 新建迭代器，验证新状态
+	iter2 := tree.IndexIterator(false)
+	iter2.Rewind()
+	assert.True(t, iter2.Valid())
+	assert.Equal(t, []byte("key2"), iter2.Key())
+	iter2.Next()
+	assert.True(t, iter2.Valid())
+	assert.Equal(t, []byte("key3"), iter2.Key())
+	iter2.Next()
+	assert.False(t, iter2.Valid())
+	iter2.Close()
 }

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
 )
 
@@ -21,6 +22,9 @@ type WriteBatch struct {
 }
 
 func (db *DB) NewWriteBatch(options *WriteBatchOptions) *WriteBatch {
+	if db.options.MemoryIndexType == cfg.BPTree && !db.seqNoFileExists && !db.isInitial {
+		panic("seqNo file not exists")
+	}
 	return &WriteBatch{
 		options:       options,
 		lock:          &sync.Mutex{},

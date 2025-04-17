@@ -9,7 +9,7 @@ type Option func(*Options)
 type Options struct {
 	DirPath         string
 	DataFileSize    int64
-	EachSyncWrites  bool
+	SyncWrites      bool
 	MemoryIndexType IndexType
 }
 
@@ -27,7 +27,7 @@ func WithDataFileSize(size int64) Option {
 
 func WithEachSyncWrites(sync bool) Option {
 	return func(o *Options) {
-		o.EachSyncWrites = sync
+		o.SyncWrites = sync
 	}
 }
 
@@ -41,7 +41,7 @@ func NewOptions(opts ...Option) (*Options, error) {
 	options := &Options{
 		DirPath:         "",
 		DataFileSize:    0,
-		EachSyncWrites:  false,
+		SyncWrites:      false,
 		MemoryIndexType: BTree,
 	}
 
