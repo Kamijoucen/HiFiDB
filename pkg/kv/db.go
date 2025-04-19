@@ -218,26 +218,29 @@ func (db *DB) Close() error {
 	}
 
 	// 保存当前事务序列号
-	seqNoFile, err := OpenSeqNoFile(db.options.DirPath)
-	defer func() {
-		if err := seqNoFile.Close(); err != nil {
-			panic(err)
+	if db.options.MemoryIndexType == cfg.BPTree {
+		seqNoFile, err := OpenSeqNoFile(db.options.DirPath)
+		defer func() {
+			if err := seqNoFile.Close(); err != nil {
+				panic(err)
+			}
+		}()
+		if err != nil {
+			return err
 		}
-	}()
-	if err != nil {
-		return err
+		seqRecord := &LogRecord{
+			Key:   []byte(seqNoKey),
+			Value: []byte(strconv.FormatUint(db.seqNo, 10)),
+		}
+		encSeqRecord, _ := EncodeLogRecord(seqRecord)
+		if err := seqNoFile.Write(encSeqRecord); err != nil {
+			return err
+		}
+		if err := seqNoFile.Sync(); err != nil {
+			return err
+		}
 	}
-	seqRecord := &LogRecord{
-		Key:   []byte(seqNoKey),
-		Value: []byte(strconv.FormatUint(db.seqNo, 10)),
-	}
-	encSeqRecord, _ := EncodeLogRecord(seqRecord)
-	if err := seqNoFile.Write(encSeqRecord); err != nil {
-		return err
-	}
-	if err := seqNoFile.Sync(); err != nil {
-		return err
-	}
+
 	// 关闭活跃文
 	if db.activeFile != nil {
 		if err := db.activeFile.Close(); err != nil {

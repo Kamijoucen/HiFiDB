@@ -90,7 +90,7 @@ func (d *DataFile) WriteHintRecord(key []byte, pos *LogRecordPos) error {
 
 }
 
-// WriteAt 写入数据
+// Close 关闭数据文件
 func (d *DataFile) Close() error {
 	return d.IoManager.Close()
 }

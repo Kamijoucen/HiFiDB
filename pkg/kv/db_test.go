@@ -38,6 +38,14 @@ func TestOpen(t *testing.T) {
 func TestDB_Put(t *testing.T) {
 	opts := cfg.GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-put")
+	// 删除之前的目录
+	defer func() {
+		err := os.RemoveAll(dir)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
 	opts.DirPath = dir
 	opts.DataFileSize = 64 * 1024 * 1024
 	db, err := Open(opts)
@@ -72,7 +80,7 @@ func TestDB_Put(t *testing.T) {
 	assert.Nil(t, err)
 
 	// 5.写到数据文件进行了转换
-	for i := 0; i < 1000000; i++ {
+	for i := range 1000000 {
 		err := db.Put(GetTestKey(i), RandomValue(128))
 		assert.Nil(t, err)
 	}
