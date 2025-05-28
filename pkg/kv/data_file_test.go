@@ -4,26 +4,27 @@ import (
 	"os"
 	"testing"
 
+	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOpenDataFile(t *testing.T) {
-	df1, err := OpenDataFile(os.TempDir(), 1)
+	df1, err := OpenDataFile(cfg.IO_FILE, os.TempDir(), 1)
 	assert.Nil(t, err)
 	assert.NotNil(t, df1)
 
-	df2, err := OpenDataFile(os.TempDir(), 2)
+	df2, err := OpenDataFile(cfg.IO_FILE, os.TempDir(), 2)
 	assert.Nil(t, err)
 	assert.NotNil(t, df2)
 
 	// 重复打开
-	df3, err := OpenDataFile(os.TempDir(), 2)
+	df3, err := OpenDataFile(cfg.IO_FILE, os.TempDir(), 2)
 	assert.Nil(t, err)
 	assert.NotNil(t, df3)
 }
 
 func TestDataFile_Write(t *testing.T) {
-	df, err := OpenDataFile(os.TempDir(), 1)
+	df, err := OpenDataFile(cfg.IO_FILE, os.TempDir(), 1)
 	assert.Nil(t, err)
 	assert.NotNil(t, df)
 
@@ -35,7 +36,7 @@ func TestDataFile_Write(t *testing.T) {
 }
 
 func TestDataFile_Sync(t *testing.T) {
-	df, err := OpenDataFile(os.TempDir(), 1)
+	df, err := OpenDataFile(cfg.IO_FILE, os.TempDir(), 1)
 	assert.Nil(t, err)
 	assert.NotNil(t, df)
 
@@ -47,7 +48,7 @@ func TestDataFile_Sync(t *testing.T) {
 }
 
 func TestDataFile_Close(t *testing.T) {
-	df, err := OpenDataFile(os.TempDir(), 1)
+	df, err := OpenDataFile(cfg.IO_FILE, os.TempDir(), 1)
 	assert.Nil(t, err)
 	assert.NotNil(t, df)
 
@@ -59,7 +60,7 @@ func TestDataFile_Close(t *testing.T) {
 }
 
 func TestDataFile_ReadLogRecord(t *testing.T) {
-	dataFile, err := OpenDataFile(os.TempDir(), 6666)
+	dataFile, err := OpenDataFile(cfg.IO_FILE, os.TempDir(), 6666)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 

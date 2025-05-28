@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,11 +11,15 @@ import (
 
 	"slices"
 
+	"github.com/gofrs/flock"
 	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
 )
 
-const seqNoKey = "seq.no"
+const (
+	seqNoKey     = "seq.no"
+	fileLockName = "flock"
+)
 
 type DB struct {
 	options         *cfg.Options
@@ -26,6 +31,8 @@ type DB struct {
 	isMerging       bool
 	seqNoFileExists bool
 	isInitial       bool
+	fileLock        *flock.Flock
+	bytesWrite      uint32 // 累计写入的字节数
 }
 
 // Open 打开数据库
@@ -43,6 +50,15 @@ func Open(options *cfg.Options) (*DB, error) {
 			return nil, err
 		}
 	}
+	// 判断当前库文件是否正在使用
+	fileLock := flock.New(filepath.Join(options.DirPath, fileLockName))
+	hold, err := fileLock.TryLock()
+	if err != nil {
+		return nil, err
+	}
+	if !hold {
+		return nil, errs.ErrDataBaseIsUsing
+	}
 
 	entries, err := os.ReadDir(options.DirPath)
 	if err != nil {
@@ -59,6 +75,7 @@ func Open(options *cfg.Options) (*DB, error) {
 		olderFiles: map[uint32]*DataFile{},
 		index:      NewIndex(cfg.BTree, options.DirPath, options.SyncWrites),
 		isInitial:  isInitial,
+		fileLock:   fileLock,
 	}
 
 	// 加载merge文件
@@ -81,6 +98,12 @@ func Open(options *cfg.Options) (*DB, error) {
 		// 加载索引
 		if err := db.loadIndexFromDataFiles(fileIds); err != nil {
 			return nil, err
+		}
+		// 重置 mmap io 仅用于加速读
+		if db.options.MMapAtStartup {
+			if err := db.resetIOType(); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -212,6 +235,11 @@ func (db *DB) Fold(f func(key, value []byte) bool) error {
 func (db *DB) Close() error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
+	defer func() {
+		if err := db.fileLock.Unlock(); err != nil {
+			panic(fmt.Sprintf("failed to unlock file lock: %v", err))
+		}
+	}()
 
 	if err := db.index.Close(); err != nil {
 		return err
@@ -325,10 +353,18 @@ func (db *DB) appendLogRecord(r *LogRecord) (*LogRecordPos, error) {
 		return nil, err
 	}
 
-	if db.options.SyncWrites {
+	db.bytesWrite += uint32(size)
+
+	var needSync = db.options.SyncWrites
+	if !needSync && db.options.BytesPerSync > 0 && db.bytesWrite >= db.options.BytesPerSync {
+		needSync = true
+	}
+
+	if needSync {
 		if err := db.activeFile.Sync(); err != nil {
 			return nil, err
 		}
+		db.bytesWrite = 0
 	}
 
 	pos := &LogRecordPos{
@@ -346,7 +382,7 @@ func (db *DB) setActiveDataFile() error {
 		initFleId = db.activeFile.FileId + 1
 	}
 
-	d, err := OpenDataFile(db.options.DirPath, initFleId)
+	d, err := OpenDataFile(cfg.IO_FILE, db.options.DirPath, initFleId)
 	if err != nil {
 		return err
 	}
@@ -380,7 +416,11 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 
 	// 逐个加载
 	for i, fid := range fileIds {
-		dataFile, err := OpenDataFile(db.options.DirPath, fid)
+		ioType := cfg.IO_FILE
+		if db.options.MMapAtStartup {
+			ioType = cfg.IO_MMAP
+		}
+		dataFile, err := OpenDataFile(ioType, db.options.DirPath, fid)
 		if err != nil {
 			return nil, err
 		}
@@ -516,4 +556,22 @@ func (db *DB) loadSeqNo() error {
 	db.seqNo = seqNo
 	db.seqNoFileExists = true
 	return os.Remove(fileName)
+}
+
+// resetIOType 重置IO类型
+func (db *DB) resetIOType() error {
+	if db.activeFile == nil {
+		return nil
+	}
+	if err := db.activeFile.SetIOManager(cfg.IO_FILE); err != nil {
+		return err
+	}
+
+	for _, d := range db.olderFiles {
+		if err := d.SetIOManager(cfg.IO_FILE); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

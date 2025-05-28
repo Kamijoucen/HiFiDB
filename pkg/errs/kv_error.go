@@ -11,4 +11,5 @@ var (
 	ErrInvalidCRC        = errors.New("invalid crc")
 	ErrExceedMaxFileSize = errors.New("exceed max file size")
 	ErrMergeIsProgress   = errors.New("merge is progress")
+	ErrDataBaseIsUsing   = errors.New("database is using")
 )

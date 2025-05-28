@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
 )
 
@@ -18,32 +19,33 @@ const (
 
 type DataFile struct {
 	FileId      uint32
+	FileName    string
 	WriteOffset int64
 	IoManager   IOManager
 }
 
 // OpenDataFile 打开数据文件
-func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
+func OpenDataFile(ioType cfg.IOType, dirPath string, fileId uint32) (*DataFile, error) {
 	fileName := GetDataFileName(dirPath, fileId)
-	return newDataFile(fileName, fileId)
+	return newDataFile(ioType, fileName, fileId)
 }
 
 // OpenHintFile 打开hint文件
 func OpenHintFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, HintFileName)
-	return newDataFile(fileName, 0)
+	return newDataFile(cfg.IO_FILE, fileName, 0)
 }
 
 // OpenMergeFinishedFile 打开合并完成的标识文件
 func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, MergeFinishedFileName)
-	return newDataFile(fileName, 0)
+	return newDataFile(cfg.IO_FILE, fileName, 0)
 }
 
 // OpenSeqNoFile 打开序列号文件
 func OpenSeqNoFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, SeqNoFileName)
-	return newDataFile(fileName, 0)
+	return newDataFile(cfg.IO_FILE, fileName, 0)
 }
 
 // GetDataFileName 获取数据文件名
@@ -52,13 +54,14 @@ func GetDataFileName(dirPath string, fileId uint32) string {
 }
 
 // newDataFile 创建数据文件
-func newDataFile(fileName string, fileId uint32) (*DataFile, error) {
-	ioManager, err := NewIOManager(fileName)
+func newDataFile(ioType cfg.IOType, fileName string, fileId uint32) (*DataFile, error) {
+	ioManager, err := NewIOManager(ioType, fileName)
 	if err != nil {
 		return nil, err
 	}
 	return &DataFile{
 		FileId:      fileId,
+		FileName:    fileName,
 		WriteOffset: 0,
 		IoManager:   ioManager,
 	}, nil
@@ -141,6 +144,19 @@ func (d *DataFile) ReadLogRecord(off int64) (*LogRecord, int64, error) {
 		return nil, 0, errs.ErrInvalidCRC
 	}
 	return logRecord, headerSize + keySize + valueSize, nil
+}
+
+// SetIOManager 设置IO管理器
+func (d *DataFile) SetIOManager(ioType cfg.IOType) error {
+	if err := d.IoManager.Close(); err != nil {
+		return err
+	}
+	newIoManager, err := NewIOManager(ioType, d.FileName)
+	if err != nil {
+		return err
+	}
+	d.IoManager = newIoManager
+	return nil
 }
 
 // readNBytes 从文件中读取n个字节

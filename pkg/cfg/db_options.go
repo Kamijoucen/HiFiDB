@@ -7,10 +7,24 @@ import (
 type Option func(*Options)
 
 type Options struct {
-	DirPath         string
-	DataFileSize    int64
-	SyncWrites      bool
+
+	// DirPath      数据库目录路径
+	DirPath string
+
+	// DataFileSize  数据文件大小，单位为字节
+	DataFileSize int64
+
+	// SyncWrites    是否每次写入都进行同步
+	SyncWrites bool
+
+	// BytesPerSync   累计写入多少字节后进行一次同步
+	BytesPerSync uint32
+
+	// MemoryIndexType 内存索引类型
 	MemoryIndexType IndexType
+
+	// MMapAtStartUp 是否在启动时将数据文件映射到内存
+	MMapAtStartup bool
 }
 
 func WithDirPath(dirPath string) Option {
@@ -34,6 +48,18 @@ func WithEachSyncWrites(sync bool) Option {
 func WithMemoryIndexType(indexType IndexType) Option {
 	return func(o *Options) {
 		o.MemoryIndexType = indexType
+	}
+}
+
+func WithBytesPerSync(bytes uint32) Option {
+	return func(o *Options) {
+		o.BytesPerSync = bytes
+	}
+}
+
+func WithMMapAtStartup(mmap bool) Option {
+	return func(o *Options) {
+		o.MMapAtStartup = mmap
 	}
 }
 
@@ -72,6 +98,8 @@ func GetDBDefaultOptions() *Options {
 		WithDataFileSize(1024*1024*1024), // 1GB
 		WithEachSyncWrites(false),
 		WithMemoryIndexType(BTree),
+		WithBytesPerSync(0), // 不开启
+		WithMMapAtStartup(true),
 	)
 	return op
 }
