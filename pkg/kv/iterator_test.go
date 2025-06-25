@@ -77,9 +77,10 @@ func TestDB_Iterator_Multi_Values(t *testing.T) {
 	iter1.Close()
 
 	// 反向迭代
-	iterOpts1 := GetDefaultIteratorOptions()
-	iterOpts1.Reverse = true
-	iter2 := db.NewIterator(iterOpts1)
+	iter2 := db.NewIterator(&IteratorOptions{
+		Prefix:  nil,
+		Reverse: true,
+	})
 	for iter2.Rewind(); iter2.Valid(); iter2.Next() {
 		assert.NotNil(t, iter2.Key())
 	}
@@ -90,9 +91,10 @@ func TestDB_Iterator_Multi_Values(t *testing.T) {
 	iter2.Close()
 
 	// 指定了 prefix
-	iterOpts2 := GetDefaultIteratorOptions()
-	iterOpts2.Prefix = []byte("aee")
-	iter3 := db.NewIterator(iterOpts2)
+	iter3 := db.NewIterator(&IteratorOptions{
+		Prefix:  []byte("aee"),
+		Reverse: false,
+	})
 	for iter3.Rewind(); iter3.Valid(); iter3.Next() {
 		assert.NotNil(t, iter3.Key())
 	}

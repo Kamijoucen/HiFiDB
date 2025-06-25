@@ -4,8 +4,6 @@ import (
 	"errors"
 )
 
-type Option func(*Options)
-
 type Options struct {
 
 	// DirPath      数据库目录路径
@@ -27,61 +25,6 @@ type Options struct {
 	MMapAtStartup bool
 }
 
-func WithDirPath(dirPath string) Option {
-	return func(o *Options) {
-		o.DirPath = dirPath
-	}
-}
-
-func WithDataFileSize(size int64) Option {
-	return func(o *Options) {
-		o.DataFileSize = size
-	}
-}
-
-func WithEachSyncWrites(sync bool) Option {
-	return func(o *Options) {
-		o.SyncWrites = sync
-	}
-}
-
-func WithMemoryIndexType(indexType IndexType) Option {
-	return func(o *Options) {
-		o.MemoryIndexType = indexType
-	}
-}
-
-func WithBytesPerSync(bytes uint32) Option {
-	return func(o *Options) {
-		o.BytesPerSync = bytes
-	}
-}
-
-func WithMMapAtStartup(mmap bool) Option {
-	return func(o *Options) {
-		o.MMapAtStartup = mmap
-	}
-}
-
-func NewOptions(opts ...Option) (*Options, error) {
-	options := &Options{
-		DirPath:         "",
-		DataFileSize:    0,
-		SyncWrites:      false,
-		MemoryIndexType: BTree,
-	}
-
-	for _, opt := range opts {
-		opt(options)
-	}
-
-	if err := CheckOptions(options); err != nil {
-		return nil, err
-	}
-
-	return options, nil
-}
-
 func CheckOptions(options *Options) error {
 	if options.DirPath == "" {
 		return errors.New("database dir path is empty")
@@ -93,13 +36,12 @@ func CheckOptions(options *Options) error {
 }
 
 func GetDBDefaultOptions() *Options {
-	op, _ := NewOptions(
-		WithDirPath("./data"),
-		WithDataFileSize(1024*1024*1024), // 1GB
-		WithEachSyncWrites(false),
-		WithMemoryIndexType(BTree),
-		WithBytesPerSync(0), // 不开启
-		WithMMapAtStartup(true),
-	)
-	return op
+	return &Options{
+		DirPath:         "./data",
+		DataFileSize:    1024 * 1024 * 1024, // 1GB
+		SyncWrites:      false,
+		MemoryIndexType: BTree,
+		BytesPerSync:    0, // 不开启
+		MMapAtStartup:   true,
+	}
 }
