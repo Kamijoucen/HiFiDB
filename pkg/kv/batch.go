@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
 )
 
@@ -22,9 +21,6 @@ type WriteBatch struct {
 }
 
 func (db *DB) NewWriteBatch(options *WriteBatchOptions) *WriteBatch {
-	if db.options.MemoryIndexType == cfg.BPTree && !db.seqNoFileExists && !db.isInitial {
-		panic("seqNo file not exists")
-	}
 	return &WriteBatch{
 		options:       options,
 		lock:          &sync.Mutex{},
@@ -135,10 +131,15 @@ func (wb *WriteBatch) Commit() error {
 	// 更新索引
 	for _, record := range wb.pendingWrites {
 		pos := positions[string(record.Key)]
-		if record.Type == LogRecordNormal {
-			wb.db.index.Put(record.Key, pos)
-		} else if record.Type == LogRecordDeleted {
-			wb.db.index.Delete(record.Key)
+		var oldPos *LogRecordPos
+		switch record.Type {
+		case LogRecordNormal:
+			oldPos = wb.db.index.Put(record.Key, pos)
+		case LogRecordDeleted:
+			oldPos, _ = wb.db.index.Delete(record.Key)
+		}
+		if oldPos != nil {
+			wb.db.reclaimSize += int64(oldPos.Size)
 		}
 	}
 

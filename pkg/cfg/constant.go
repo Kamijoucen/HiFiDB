@@ -9,8 +9,6 @@ const (
 	// ART ART index
 	ART
 
-	// BPTree B+Tree index
-	BPTree
 )
 
 type IOType = uint8

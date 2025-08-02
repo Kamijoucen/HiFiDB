@@ -188,10 +188,6 @@ func (db *DB) loadMergeFiles() error {
 			mergeFinished = true
 			break
 		}
-		if entry.Name() == SeqNoFileName {
-			// seqNo文件不需要merge
-			continue
-		}
 		mergeFileNames = append(mergeFileNames, entry.Name())
 	}
 

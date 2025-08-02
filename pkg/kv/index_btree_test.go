@@ -9,11 +9,36 @@ import (
 func TestBTree_Put(t *testing.T) {
 	bt := NewBTreeIndex()
 
+	// 首次插入应该返回 nil（没有旧值）
 	res := bt.Put([]byte("key"), &LogRecordPos{Fid: 1, Offset: 2})
-	assert.True(t, res)
+	assert.Nil(t, res)
 
 	res = bt.Put([]byte("key1"), &LogRecordPos{Fid: 2, Offset: 3})
-	assert.True(t, res)
+	assert.Nil(t, res)
+
+	// 更新已存在的 key 应该返回旧值
+	oldValue := bt.Put([]byte("key"), &LogRecordPos{Fid: 10, Offset: 20})
+	assert.Equal(t, &LogRecordPos{Fid: 1, Offset: 2}, oldValue)
+}
+
+func TestBTree_Put_RepeatKey(t *testing.T) {
+	bt := NewBTreeIndex()
+
+	// 首次插入
+	res1 := bt.Put([]byte("key"), &LogRecordPos{Fid: 1, Offset: 100})
+	assert.Nil(t, res1)
+
+	// 第二次插入同一个 key，应该返回第一次的值
+	res2 := bt.Put([]byte("key"), &LogRecordPos{Fid: 2, Offset: 200})
+	assert.Equal(t, &LogRecordPos{Fid: 1, Offset: 100}, res2)
+
+	// 第三次插入同一个 key，应该返回第二次的值
+	res3 := bt.Put([]byte("key"), &LogRecordPos{Fid: 3, Offset: 300})
+	assert.Equal(t, &LogRecordPos{Fid: 2, Offset: 200}, res3)
+
+	// 验证最终的值是最后一次插入的值
+	finalValue := bt.Get([]byte("key"))
+	assert.Equal(t, &LogRecordPos{Fid: 3, Offset: 300}, finalValue)
 }
 
 func TestBTree_Get(t *testing.T) {
@@ -38,8 +63,10 @@ func TestBTree_Delete(t *testing.T) {
 	bt.Put([]byte("key"), &LogRecordPos{Fid: 1, Offset: 2})
 	bt.Put([]byte("key1"), &LogRecordPos{Fid: 2, Offset: 3})
 
-	res := bt.Delete([]byte("key"))
-	assert.True(t, res)
+	// 删除存在的 key 应该返回被删除的值和 true
+	deletedValue, success := bt.Delete([]byte("key"))
+	assert.True(t, success)
+	assert.Equal(t, &LogRecordPos{Fid: 1, Offset: 2}, deletedValue)
 
 	pos := bt.Get([]byte("key"))
 	assert.Nil(t, pos)
@@ -47,8 +74,15 @@ func TestBTree_Delete(t *testing.T) {
 	pos = bt.Get([]byte("key1"))
 	assert.Equal(t, &LogRecordPos{Fid: 2, Offset: 3}, pos)
 
-	res = bt.Delete(nil)
-	assert.False(t, res)
+	// 删除不存在的 key（nil 或其他不存在的 key）应该返回 nil 和 false
+	deletedValue2, success2 := bt.Delete(nil)
+	assert.False(t, success2)
+	assert.Nil(t, deletedValue2)
+
+	// 测试删除不存在的普通 key
+	deletedValue3, success3 := bt.Delete([]byte("nonexistent"))
+	assert.False(t, success3)
+	assert.Nil(t, deletedValue3)
 }
 
 func TestBTree_Iterator(t *testing.T) {

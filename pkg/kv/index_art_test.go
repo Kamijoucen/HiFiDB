@@ -9,14 +9,39 @@ import (
 func TestArTree_Put(t *testing.T) {
 	art := NewArTree()
 
+	// 首次插入应该返回 nil（没有旧值）
 	res1 := art.Put([]byte("a"), &LogRecordPos{Fid: 1, Offset: 2})
-	assert.True(t, res1)
+	assert.Nil(t, res1)
 
 	res2 := art.Put([]byte("b"), &LogRecordPos{Fid: 2, Offset: 3})
-	assert.True(t, res2)
+	assert.Nil(t, res2)
 
 	res3 := art.Put([]byte("c"), &LogRecordPos{Fid: 3, Offset: 4})
-	assert.True(t, res3)
+	assert.Nil(t, res3)
+
+	// 更新已存在的 key 应该返回旧值
+	oldValue := art.Put([]byte("a"), &LogRecordPos{Fid: 10, Offset: 20})
+	assert.Equal(t, &LogRecordPos{Fid: 1, Offset: 2}, oldValue)
+}
+
+func TestArTree_Put_RepeatKey(t *testing.T) {
+	art := NewArTree()
+
+	// 首次插入
+	res1 := art.Put([]byte("key"), &LogRecordPos{Fid: 1, Offset: 100})
+	assert.Nil(t, res1)
+
+	// 第二次插入同一个 key，应该返回第一次的值
+	res2 := art.Put([]byte("key"), &LogRecordPos{Fid: 2, Offset: 200})
+	assert.Equal(t, &LogRecordPos{Fid: 1, Offset: 100}, res2)
+
+	// 第三次插入同一个 key，应该返回第二次的值
+	res3 := art.Put([]byte("key"), &LogRecordPos{Fid: 3, Offset: 300})
+	assert.Equal(t, &LogRecordPos{Fid: 2, Offset: 200}, res3)
+
+	// 验证最终的值是最后一次插入的值
+	finalValue := art.Get([]byte("key"))
+	assert.Equal(t, &LogRecordPos{Fid: 3, Offset: 300}, finalValue)
 }
 
 func TestArTree_Get(t *testing.T) {
@@ -45,14 +70,23 @@ func TestArTree_Delete(t *testing.T) {
 	art.Put([]byte("a"), &LogRecordPos{Fid: 1, Offset: 2})
 	art.Put([]byte("b"), &LogRecordPos{Fid: 2, Offset: 3})
 
-	res1 := art.Delete([]byte("a"))
-	assert.True(t, res1)
+	// 删除存在的 key 应该返回被删除的值和 true
+	deletedValue, success := art.Delete([]byte("a"))
+	assert.True(t, success)
+	assert.Equal(t, &LogRecordPos{Fid: 1, Offset: 2}, deletedValue)
 
 	pos1 := art.Get([]byte("a"))
 	assert.Nil(t, pos1)
 
-	res2 := art.Delete([]byte("c"))
-	assert.False(t, res2)
+	// 删除不存在的 key 应该返回 nil 和 false
+	deletedValue2, success2 := art.Delete([]byte("c"))
+	assert.False(t, success2)
+	assert.Nil(t, deletedValue2)
+
+	// 测试删除不存在的普通 key
+	deletedValue3, success3 := art.Delete([]byte("nonexistent"))
+	assert.False(t, success3)
+	assert.Nil(t, deletedValue3)
 }
 
 func TestArTree_Size(t *testing.T) {

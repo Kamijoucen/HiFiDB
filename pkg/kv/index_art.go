@@ -22,20 +22,23 @@ func NewArTree() *ArTree {
 }
 
 // Put 添加key-value，返回是否添加成功
-func (a *ArTree) Put(key []byte, value *LogRecordPos) bool {
+func (a *ArTree) Put(key []byte, value *LogRecordPos) *LogRecordPos {
 	a.lock.Lock()
-	defer a.lock.Unlock()
-	a.tree.Insert(key, value)
-	return true
+	oldValue, _ := a.tree.Insert(key, value)
+	a.lock.Unlock()
+	if oldValue == nil {
+		return nil
+	}
+	return oldValue.(*LogRecordPos)
 }
 
 // Get 获取key对应的value
 func (a *ArTree) Get(key []byte) *LogRecordPos {
 
 	a.lock.RLock()
-	defer a.lock.RUnlock()
-
 	v, found := a.tree.Search(key)
+	a.lock.RUnlock()
+
 	if !found {
 		return nil
 	}
@@ -43,12 +46,15 @@ func (a *ArTree) Get(key []byte) *LogRecordPos {
 }
 
 // Delete 删除key，返回是否删除成功
-func (a *ArTree) Delete(key []byte) bool {
+func (a *ArTree) Delete(key []byte) (*LogRecordPos, bool) {
 	a.lock.Lock()
-	defer a.lock.Unlock()
+	oldValue, deleted := a.tree.Delete(key)
+	a.lock.Unlock()
 
-	_, deleted := a.tree.Delete(key)
-	return deleted
+	if oldValue == nil {
+		return nil, deleted
+	}
+	return oldValue.(*LogRecordPos), deleted
 }
 
 // Size 获取索引大小

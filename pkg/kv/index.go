@@ -13,9 +13,8 @@ func NewIndex(indexType cfg.IndexType, dirPath string, syncWrites bool) Indexer 
 	case cfg.BTree:
 		return NewBTreeIndex()
 	case cfg.ART:
-		return NewArTree()
-	case cfg.BPTree:
-		return NewBPlusTree(dirPath, syncWrites)
+		// return NewArTree()
+		panic("ART index is not supported")
 	default:
 		panic("unknown index type")
 	}
@@ -24,13 +23,13 @@ func NewIndex(indexType cfg.IndexType, dirPath string, syncWrites bool) Indexer 
 type Indexer interface {
 
 	// Put 添加key-value，返回是否添加成功
-	Put(key []byte, value *LogRecordPos) bool
+	Put(key []byte, value *LogRecordPos) *LogRecordPos
 
 	// Get 获取key对应的value
 	Get(key []byte) *LogRecordPos
 
 	// Delete 删除key，返回是否删除成功
-	Delete(key []byte) bool
+	Delete(key []byte) (*LogRecordPos, bool)
 
 	// Size 获取索引大小
 	Size() int

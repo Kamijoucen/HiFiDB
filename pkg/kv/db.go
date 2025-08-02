@@ -22,17 +22,16 @@ const (
 )
 
 type DB struct {
-	options         *cfg.Options
-	lock            *sync.RWMutex
-	activeFile      *DataFile
-	olderFiles      map[uint32]*DataFile
-	index           Indexer
-	seqNo           uint64
-	isMerging       bool
-	seqNoFileExists bool
-	isInitial       bool
-	fileLock        *flock.Flock
-	bytesWrite      uint32 // 累计写入的字节数
+	options     *cfg.Options
+	lock        *sync.RWMutex
+	activeFile  *DataFile
+	olderFiles  map[uint32]*DataFile
+	index       Indexer
+	seqNo       uint64
+	isMerging   bool
+	fileLock    *flock.Flock
+	bytesWrite  uint32 // 累计写入的字节数
+	reclaimSize int64  // 无效数据大小
 }
 
 // Open 打开数据库
@@ -42,10 +41,8 @@ func Open(options *cfg.Options) (*DB, error) {
 		return nil, err
 	}
 
-	var isInitial bool
 	// 检查目录是否存在
 	if _, err := os.Stat(options.DirPath); os.IsNotExist(err) {
-		isInitial = true
 		if err := os.MkdirAll(options.DirPath, os.ModePerm); err != nil {
 			return nil, err
 		}
@@ -59,22 +56,12 @@ func Open(options *cfg.Options) (*DB, error) {
 	if !hold {
 		return nil, errs.ErrDataBaseIsUsing
 	}
-
-	entries, err := os.ReadDir(options.DirPath)
-	if err != nil {
-		return nil, err
-	}
-	if len(entries) == 0 {
-		isInitial = true
-	}
-
 	// 初始化db
 	db := &DB{
 		options:    options,
 		lock:       &sync.RWMutex{},
 		olderFiles: map[uint32]*DataFile{},
 		index:      NewIndex(cfg.BTree, options.DirPath, options.SyncWrites),
-		isInitial:  isInitial,
 		fileLock:   fileLock,
 	}
 
@@ -89,35 +76,18 @@ func Open(options *cfg.Options) (*DB, error) {
 		return nil, err
 	}
 
-	// 如果索引是BPTree，无需加载索引
-	if options.MemoryIndexType != cfg.BPTree {
-		// 从hint文件加载索引
-		if err := db.loadIndexFromHintFile(); err != nil {
-			return nil, err
-		}
-		// 加载索引
-		if err := db.loadIndexFromDataFiles(fileIds); err != nil {
-			return nil, err
-		}
-		// 重置 mmap io 仅用于加速读
-		if db.options.MMapAtStartup {
-			if err := db.resetIOType(); err != nil {
-				return nil, err
-			}
-		}
+	// 从hint文件加载索引
+	if err := db.loadIndexFromHintFile(); err != nil {
+		return nil, err
 	}
-
-	// 加载seqNo
-	if options.MemoryIndexType == cfg.BPTree {
-		if err := db.loadSeqNo(); err != nil {
+	// 加载索引
+	if err := db.loadIndexFromDataFiles(fileIds); err != nil {
+		return nil, err
+	}
+	// 重置 mmap io 仅用于加速读
+	if db.options.MMapAtStartup {
+		if err := db.resetIOType(); err != nil {
 			return nil, err
-		}
-		if db.activeFile != nil {
-			size, err := db.activeFile.IoManager.Size()
-			if err != nil {
-				return nil, err
-			}
-			db.activeFile.WriteOffset = size
 		}
 	}
 
@@ -142,8 +112,9 @@ func (db *DB) Put(key, value []byte) error {
 		return err
 	}
 
-	if !db.index.Put(key, pos) {
-		return errs.ErrIndexUpdateFailed
+	// 更新内存索引
+	if oldPos := db.index.Put(key, pos); oldPos != nil {
+		db.reclaimSize += int64(oldPos.Size)
 	}
 	return nil
 }
@@ -182,13 +153,19 @@ func (db *DB) Delete(key []byte) error {
 		Type: LogRecordDeleted,
 	}
 
-	_, err := db.appendLogRecordWithLock(logRecord)
+	pos, err := db.appendLogRecordWithLock(logRecord)
 	if err != nil {
 		return err
 	}
+	db.reclaimSize += int64(pos.Size)
 
-	if !db.index.Delete(key) {
+	oldPos, ok := db.index.Delete(key)
+	if !ok {
 		return errs.ErrIndexUpdateFailed
+	}
+
+	if oldPos != nil {
+		db.reclaimSize += int64(oldPos.Size)
 	}
 	return nil
 }
@@ -243,30 +220,6 @@ func (db *DB) Close() error {
 
 	if err := db.index.Close(); err != nil {
 		return err
-	}
-
-	// 保存当前事务序列号
-	if db.options.MemoryIndexType == cfg.BPTree {
-		seqNoFile, err := OpenSeqNoFile(db.options.DirPath)
-		defer func() {
-			if err := seqNoFile.Close(); err != nil {
-				panic(err)
-			}
-		}()
-		if err != nil {
-			return err
-		}
-		seqRecord := &LogRecord{
-			Key:   []byte(seqNoKey),
-			Value: []byte(strconv.FormatUint(db.seqNo, 10)),
-		}
-		encSeqRecord, _ := EncodeLogRecord(seqRecord)
-		if err := seqNoFile.Write(encSeqRecord); err != nil {
-			return err
-		}
-		if err := seqNoFile.Sync(); err != nil {
-			return err
-		}
 	}
 
 	// 关闭活跃文
@@ -454,14 +407,17 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 	}
 
 	updateIndex := func(key []byte, recordType LogRecordType, pos *LogRecordPos) {
-		var ok bool
+
+		var oldPos *LogRecordPos
 		if recordType == LogRecordDeleted {
-			ok = db.index.Delete(key)
+			oldPos, _ = db.index.Delete(key)
+			db.reclaimSize += int64(pos.Size)
 		} else {
-			ok = db.index.Put(key, pos)
+			oldPos = db.index.Put(key, pos)
 		}
-		if !ok {
-			panic("index update failed")
+
+		if oldPos != nil {
+			db.reclaimSize += int64(oldPos.Size)
 		}
 	}
 
@@ -497,6 +453,7 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 			logRecordPos := &LogRecordPos{
 				Fid:    fid,
 				Offset: offset,
+				Size:   uint32(rSize),
 			}
 
 			realKey, seqNo := parseLogRecordKey(logRecord.Key)
@@ -532,30 +489,6 @@ func (db *DB) loadIndexFromDataFiles(fileIds []uint32) error {
 		db.seqNo = currentSeqNo
 	}
 	return nil
-}
-
-// loadSeqNo 加载seqNo
-func (db *DB) loadSeqNo() error {
-
-	fileName := filepath.Join(db.options.DirPath, SeqNoFileName)
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		return nil
-	}
-	seqNoFile, err := OpenSeqNoFile(db.options.DirPath)
-	if err != nil {
-		return err
-	}
-	seqRecord, _, err := seqNoFile.ReadLogRecord(0)
-	if err != nil {
-		return err
-	}
-	seqNo, err := strconv.ParseUint(string(seqRecord.Value), 10, 64)
-	if err != nil {
-		return err
-	}
-	db.seqNo = seqNo
-	db.seqNoFileExists = true
-	return os.Remove(fileName)
 }
 
 // resetIOType 重置IO类型
