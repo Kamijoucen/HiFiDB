@@ -3,13 +3,12 @@ package main
 import (
 	"errors"
 
-	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
 	"github.com/kamijoucen/hifidb/pkg/kv"
 )
 
 func main() {
-	options := cfg.GetDBDefaultOptions()
+	options := kv.GetDBDefaultOptions()
 
 	db, err := kv.Open(options)
 	if err != nil {

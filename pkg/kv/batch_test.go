@@ -4,13 +4,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDB_WriteBatch1(t *testing.T) {
-	opts := cfg.GetDBDefaultOptions()
+	opts := GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-batch-1")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -48,7 +47,7 @@ func TestDB_WriteBatch1(t *testing.T) {
 }
 
 func TestDB_WriteBatch2(t *testing.T) {
-	opts := cfg.GetDBDefaultOptions()
+	opts := GetDBDefaultOptions()
 	dir, _ := os.MkdirTemp("", "bitcask-go-batch-2")
 	opts.DirPath = dir
 	db, err := Open(opts)

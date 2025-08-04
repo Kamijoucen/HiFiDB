@@ -4,15 +4,13 @@ import (
 	"bytes"
 
 	"github.com/google/btree"
-
-	"github.com/kamijoucen/hifidb/pkg/cfg"
 )
 
-func NewIndex(indexType cfg.IndexType, dirPath string, syncWrites bool) Indexer {
+func NewIndex(indexType IndexType, dirPath string, syncWrites bool) Indexer {
 	switch indexType {
-	case cfg.BTree:
+	case BTree:
 		return NewBTreeIndex()
-	case cfg.ART:
+	case ART:
 		// return NewArTree()
 		panic("ART index is not supported")
 	default:

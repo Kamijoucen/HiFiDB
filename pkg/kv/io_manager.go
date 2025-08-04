@@ -2,8 +2,6 @@ package kv
 
 import (
 	"fmt"
-
-	"github.com/kamijoucen/hifidb/pkg/cfg"
 )
 
 const DataFilePerm = 0644
@@ -21,11 +19,11 @@ type IOManager interface {
 	Size() (int64, error)
 }
 
-func NewIOManager(indexType cfg.IOType, fileName string) (IOManager, error) {
+func NewIOManager(indexType IOType, fileName string) (IOManager, error) {
 	switch indexType {
-	case cfg.IO_FILE:
+	case IO_FILE:
 		return NewFileIOManager(fileName)
-	case cfg.IO_MMAP:
+	case IO_MMAP:
 		return NewMMapIOManager(fileName)
 	}
 	return nil, fmt.Errorf("unsupported IO type: %d", indexType)

@@ -12,7 +12,6 @@ import (
 	"slices"
 
 	"github.com/gofrs/flock"
-	"github.com/kamijoucen/hifidb/pkg/cfg"
 	"github.com/kamijoucen/hifidb/pkg/errs"
 )
 
@@ -22,7 +21,7 @@ const (
 )
 
 type DB struct {
-	options     *cfg.Options
+	options     *Options
 	lock        *sync.RWMutex
 	activeFile  *DataFile
 	olderFiles  map[uint32]*DataFile
@@ -35,9 +34,9 @@ type DB struct {
 }
 
 // Open 打开数据库
-func Open(options *cfg.Options) (*DB, error) {
+func Open(options *Options) (*DB, error) {
 
-	if err := cfg.CheckOptions(options); err != nil {
+	if err := CheckOptions(options); err != nil {
 		return nil, err
 	}
 
@@ -61,7 +60,7 @@ func Open(options *cfg.Options) (*DB, error) {
 		options:    options,
 		lock:       &sync.RWMutex{},
 		olderFiles: map[uint32]*DataFile{},
-		index:      NewIndex(cfg.BTree, options.DirPath, options.SyncWrites),
+		index:      NewIndex(BTree, options.DirPath, options.SyncWrites),
 		fileLock:   fileLock,
 	}
 
@@ -323,6 +322,7 @@ func (db *DB) appendLogRecord(r *LogRecord) (*LogRecordPos, error) {
 	pos := &LogRecordPos{
 		Fid:    db.activeFile.FileId,
 		Offset: writeOffset,
+		Size:   uint32(size),
 	}
 	return pos, nil
 }
@@ -335,7 +335,7 @@ func (db *DB) setActiveDataFile() error {
 		initFleId = db.activeFile.FileId + 1
 	}
 
-	d, err := OpenDataFile(cfg.IO_FILE, db.options.DirPath, initFleId)
+	d, err := OpenDataFile(IO_FILE, db.options.DirPath, initFleId)
 	if err != nil {
 		return err
 	}
@@ -369,9 +369,9 @@ func (db *DB) loadDataFiles() ([]uint32, error) {
 
 	// 逐个加载
 	for i, fid := range fileIds {
-		ioType := cfg.IO_FILE
+		ioType := IO_FILE
 		if db.options.MMapAtStartup {
-			ioType = cfg.IO_MMAP
+			ioType = IO_MMAP
 		}
 		dataFile, err := OpenDataFile(ioType, db.options.DirPath, fid)
 		if err != nil {
@@ -496,12 +496,12 @@ func (db *DB) resetIOType() error {
 	if db.activeFile == nil {
 		return nil
 	}
-	if err := db.activeFile.SetIOManager(cfg.IO_FILE); err != nil {
+	if err := db.activeFile.SetIOManager(IO_FILE); err != nil {
 		return err
 	}
 
 	for _, d := range db.olderFiles {
-		if err := d.SetIOManager(cfg.IO_FILE); err != nil {
+		if err := d.SetIOManager(IO_FILE); err != nil {
 			return err
 		}
 	}
