@@ -7,7 +7,7 @@ type Stat struct {
 	DiskSize        int64 // 磁盘使用大小
 }
 
-func (db *DB) Stat() *Stat {
+func (db *DB) Stat() (*Stat, error) {
 
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -17,10 +17,14 @@ func (db *DB) Stat() *Stat {
 		dataFiles++
 	}
 
+	dirSize, err := DirSize(db.options.DirPath)
+	if err != nil {
+		return nil, err
+	}
 	return &Stat{
 		KeyNum:          uint(db.index.Size()),
 		DataFileNum:     dataFiles,
 		ReclaimableSize: db.reclaimSize,
-		DiskSize:        0,
-	}
+		DiskSize:        dirSize,
+	}, nil
 }

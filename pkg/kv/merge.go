@@ -188,6 +188,9 @@ func (db *DB) loadMergeFiles() error {
 			mergeFinished = true
 			break
 		}
+		if entry.Name() == fileLockName {
+			continue
+		}
 		mergeFileNames = append(mergeFileNames, entry.Name())
 	}
 

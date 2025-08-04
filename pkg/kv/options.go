@@ -42,6 +42,9 @@ type Options struct {
 
 	// MMapAtStartUp 是否在启动时将数据文件映射到内存
 	MMapAtStartup bool
+
+	// DataFileMergeRatio 数据文件合并阈值
+	DataFileMergeRatio float64
 }
 
 // CheckOptions 检查配置选项是否有效
@@ -52,18 +55,24 @@ func CheckOptions(options *Options) error {
 	if options.DataFileSize <= 0 {
 		return errors.New("database data file size is invalid")
 	}
+
+	if options.DataFileMergeRatio <= 0 || options.DataFileMergeRatio > 1 {
+		return errors.New("database data file merge ratio must be between 0 and 1")
+	}
+
 	return nil
 }
 
 // GetDBDefaultOptions 获取默认数据库配置
 func GetDBDefaultOptions() *Options {
 	return &Options{
-		DirPath:         "./data",
-		DataFileSize:    1024 * 1024 * 1024, // 1GB
-		SyncWrites:      false,
-		MemoryIndexType: BTree,
-		BytesPerSync:    0, // 不开启
-		MMapAtStartup:   true,
+		DirPath:            "./data",
+		DataFileSize:       1024 * 1024 * 1024, // 1GB
+		SyncWrites:         false,
+		MemoryIndexType:    BTree,
+		BytesPerSync:       0, // 不开启
+		MMapAtStartup:      true,
+		DataFileMergeRatio: 0.5, // 默认合并比例为50%
 	}
 }
 
