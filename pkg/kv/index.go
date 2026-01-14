@@ -11,8 +11,7 @@ func NewIndex(indexType IndexType, dirPath string, syncWrites bool) Indexer {
 	case BTree:
 		return NewBTreeIndex()
 	case ART:
-		// return NewArTree()
-		panic("ART index is not supported")
+		return NewArTree()
 	default:
 		panic("unknown index type")
 	}
