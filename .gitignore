@@ -195,3 +195,5 @@ tempdb
 *.meta
 *.walog
 .VSCodeCounter
+
+.DS_Store
